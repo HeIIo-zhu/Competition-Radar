@@ -567,7 +567,9 @@ footer b{color:var(--text2)}
         + (sc.fetchedAt? '<span class="stt">'+esc(fmtTime(sc.fetchedAt))+'</span>':'');
       c.appendChild(line);
     } else if(HAS_API){
-      c.appendChild(el('div','schedline muted','<span>官网日程：等待刷新…</span>'));
+      c.appendChild(el('div','schedline muted', it.url
+        ? '<span>官网日程：等待刷新…</span>'
+        : '<span>目录未提供官网链接 · 以学院通知为准</span>'));
     }
     c.appendChild(el('div','hint', it.ext? ('注：'+esc(it.ext)) : (it.url? '官网：'+esc(it.url.replace(/^https?:\/\//,'').slice(0,46)) : '点击查看备赛清单与校内路径')));
     if(dir==='other' && state.dir==='all') c.classList.add('dim');
@@ -670,7 +672,11 @@ footer b{color:var(--text2)}
       if(!sc.ok) sL.appendChild(el('div','hintbox','抓取失败：'+esc(sc.error||sc.status)));
       b.appendChild(sL);
     } else if(HAS_API){
-      b.appendChild(el('div','sec','<h4>官网实时日程</h4><div class="hintbox">尚未抓取该赛事官网，点右上角「刷新最新」即可拉取报名状态与日期。</div>'));
+      b.appendChild(el('div','sec','<h4>官网实时日程</h4><div class="hintbox">'
+        + (it.url
+            ? '尚未抓取该赛事官网，点右上角「刷新最新」即可拉取报名状态与日期。'
+            : '2026 目录没有提供该赛事的官网链接，无法自动抓取。请关注负责学院发布的校内选拔通知。')
+        + '</div>'));
     }
 
     if(d && nodesOf(it).length){
