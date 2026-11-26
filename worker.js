@@ -1,9 +1,13 @@
 /* 竞赛雷达 · 公网刷新代理（Cloudflare Workers，免费）
    部署：Cloudflare 控制台 → Workers & Pages → Create Worker → Edit code → 全文粘贴 → Deploy
-   作用：帮浏览器跨域抓取南信大官网与各赛事官网，返回 /api/ping /api/status /api/refresh /api/scan
-   安全：只允许访问白名单域名，避免被当成开放代理滥用。
+   接口：
+     /api/ping          健康检查
+     /api/status        上次校内通知刷新结果
+     /api/refresh       抓南信大 5 个官方栏目的最新通知
+     /api/schedules POST 抓一组赛事官网，提取报名状态与日程（body: {targets:[{id,name,url}]}）
+     /api/scan?url=     抓单个官网并跟进子页，列出日期
+   安全：所有目标网址必须在白名单内，避免被当成开放代理。
 */
-
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 const SOURCES = [
@@ -14,13 +18,140 @@ const SOURCES = [
   { id: 'cxcysj', name: '创新创业学院 · 竞赛目录', url: 'https://ofxy.nuist.edu.cn/3454/list.htm' }
 ];
 
-/* 允许被抓取的域名后缀（学校 + 竞赛官网） */
 const ALLOW = [
-  'nuist.edu.cn', 'ncss.cn', 'tiaozhanbei.net', 'icpc.pku.edu.cn', 'mcm.edu.cn',
-  'comap.org', 'cmathc.org.cn', 'xjtu.edu.cn', 'smartcarrace.com', 'cnsoftbei.com',
-  'blcu.edu.cn', 'gcxl.edu.cn', 'huawei.com', 'g-ican.com', 'drct-caa.org.cn',
-  'lanqiao.cn', 'ccf.org.cn', 'mtcup.cn', 'china-cssc.org', 'giscup.com',
-  'structurecontest.com', 'bjtu.edu.cn', 'chinagxjob.com', 'c4best.cn', 'cumt.edu.cn'
+  '3chuang.net',
+  'acm.cumt.edu.cn',
+  'bjtu.edu.cn',
+  'blcu.edu.cn',
+  'c4best.cn',
+  'caairobot.com',
+  'ccf.org.cn',
+  'ccpc.ccf.org.cn',
+  'cdec.org.cn',
+  'cfw.cn',
+  'china-cssc.org',
+  'chinagxjob.com',
+  'chinaus-maker.org.cn',
+  'cid.nju.edu.cn',
+  'ciscn.cn',
+  'clpp.org.cn',
+  'cmathc.org.cn',
+  'cnsoftbei.com',
+  'comap.org',
+  'compiler.educg.net',
+  'contest.comap.org',
+  'contest.i21st.cn',
+  'crc.drct-caa.org.cn',
+  'cstam.org.cn',
+  'cteic.com',
+  'cugb.edu.cn',
+  'cuidc.net',
+  'culsc.cn',
+  'cumt.edu.cn',
+  'cy.ncss.cn',
+  'digix.org.cn',
+  'drct-caa.org.cn',
+  'e.huawei.com',
+  'energy.ckcest.cn',
+  'fwwb.org.cn',
+  'g-ican.com',
+  'gcxl.edu.cn',
+  'gd.p.moocollege.com',
+  'giscloud.com.cn',
+  'gjcxcy.bjtu.edu.cn',
+  'hhu.edu.cn',
+  'huacanjiang.com',
+  'huawei.com',
+  'ibizsim.com.cn',
+  'iche.zju.edu.cn',
+  'icpc.pku.edu.cn',
+  'ict.sflep.com',
+  'iot.sjtu.edu.cn',
+  'isclab.org.cn',
+  'jienengjianpai.org',
+  'jingdiansxj.cn',
+  'jsjds.blcu.edu.cn',
+  'lalavision.com',
+  'lanqiao.cn',
+  'm3dds.3ddl.net',
+  'match.xmkeyun.com.cn',
+  'mcm.edu.cn',
+  'meicc.cmes.org',
+  'mit.caai.cn',
+  'mse-cn.com',
+  'mtcup.cn',
+  'ncss.cn',
+  'nju.edu.cn',
+  'nuedc.xjtu.edu.cn',
+  'nuist.edu.cn',
+  'p.moocollege.com',
+  'pku.edu.cn',
+  'raicom.com.cn',
+  'robotcontest.cn',
+  'seentao.com',
+  'siemenscup-cimc.org.cn',
+  'sjtu.edu.cn',
+  'sljzw.hhu.edu.cn',
+  'smartcarrace.com',
+  'smt.whu.edu.cn',
+  'socchina.net',
+  'ssfk.zufe.edu.cn',
+  'star.baidu.com',
+  'structurecontest.com',
+  'sun-ada.net',
+  'tiaozhanbei.net',
+  'tjjmds.ai-learning.net',
+  'uiaec.ujs.edu.cn',
+  'ujs.edu.cn',
+  'umic.ckcest.cn',
+  'univ.ciciec.com',
+  'whu.edu.cn',
+  'wlsycx.moocollege.com',
+  'www.3chuang.net',
+  'www.c4best.cn',
+  'www.caairobot.com',
+  'www.cdec.org.cn',
+  'www.china-cssc.org',
+  'www.chinagxjob.com',
+  'www.chinaus-maker.org.cn',
+  'www.ciscn.cn',
+  'www.clpp.org.cn',
+  'www.cmathc.org.cn',
+  'www.cnsoftbei.com',
+  'www.cteic.com',
+  'www.cuidc.net',
+  'www.culsc.cn',
+  'www.digix.org.cn',
+  'www.fwwb.org.cn',
+  'www.g-ican.com',
+  'www.gcxl.edu.cn',
+  'www.giscloud.com.cn',
+  'www.huacanjiang.com',
+  'www.ibizsim.com.cn',
+  'www.isclab.org.cn',
+  'www.jienengjianpai.org',
+  'www.jingdiansxj.cn',
+  'www.lalavision.com',
+  'www.mcm.edu.cn',
+  'www.mse-cn.com',
+  'www.mtcup.cn',
+  'www.raicom.com.cn',
+  'www.robotcontest.cn',
+  'www.seentao.com',
+  'www.siemenscup-cimc.org.cn',
+  'www.smartcarrace.com',
+  'www.socchina.net',
+  'www.structurecontest.com',
+  'www.sun-ada.net',
+  'www.tiaozhanbei.net',
+  'www.xcbds.com',
+  'xcbds.com',
+  'xjtu.edu.cn',
+  'xmkeyun.com.cn',
+  'yuanxi.cugb.edu.cn',
+  'zju.edu.cn',
+  'zpy.cstam.org.cn',
+  'zufe.edu.cn'
 ];
 
 const TODAY = new Date('2026-10-29T00:00:00');
@@ -33,16 +164,15 @@ function allowed(u) {
   const h = x.hostname.toLowerCase();
   return ALLOW.some(s => h === s || h.endsWith('.' + s));
 }
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Cache-Control': 'no-store'
+};
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
-    status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Cache-Control': 'no-store'
-    }
+    status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS }
   });
 }
 
@@ -67,6 +197,16 @@ async function fetchText(target, ms = 20000) {
 function clean(s) {
   return String(s || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/\s+/g, ' ').trim();
+}
+function stripTags(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
 }
 function parseNotices(html, base) {
   const out = [], seen = new Set();
@@ -97,7 +237,6 @@ function parseNotices(html, base) {
   out.sort((a, b) => b.date.localeCompare(a.date));
   return out;
 }
-
 function scanDates(html) {
   const set = new Set();
   const add = (y, m, d) => {
@@ -113,8 +252,71 @@ function scanDates(html) {
   return Array.from(set).sort();
 }
 
-let CACHE = null;
+/* ── 从赛事官网页面提取「报名状态 / 开始 / 截止」及原文证据 ───── */
+const DATE_RE = /(20\d\d)\s*[-/年.]\s*(\d{1,2})\s*[-/月.]\s*(\d{1,2})/g;
+const KW_CTX = /报名|截止|开始|启动|开通|初赛|复赛|决赛|提交|作品|赛程|时间安排|征集/;
+const RE_START = /(报名|征集|申报)\s*(开始|启动|开启|开通)|(开始|启动|开通)\s*(报名|征集|申报)/;
+const RE_END = /(报名|提交|作品|申报)\s*(截止|截至|结束|关闭)|(截止|截至|关闭)\s*(报名|提交|申报)/;
+function extractSchedule(html) {
+  const text = stripTags(String(html || '').slice(0, 500000));
+  const hasCN = /[\u4e00-\u9fff]/.test(text);
+  const dates = [], evidence = [];
+  let start = null, deadline = null;
+  // 按句处理，避免相邻句子的「截止」污染前面那句的「开始」
+  const sentences = text.split(/[。；;！!\n]+/).map(x => x.trim()).filter(x => x.length > 3);
+  for (const sent of sentences) {
+    const ms = [...sent.matchAll(DATE_RE)];
+    if (!ms.length) continue;
+    if (KW_CTX.test(sent) && evidence.length < 5) {
+      const sn = sent.slice(0, 150);
+      if (!evidence.includes(sn)) evidence.push(sn);
+    }
+    for (const m of ms) {
+      const y = +m[1], mo = +m[2], d = +m[3];
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+      const day = y + '-' + pad(mo) + '-' + pad(d);
+      dates.push(day);
+      const before = sent.slice(Math.max(0, m.index - 30), m.index);
+      const after = sent.slice(m.index + m[0].length, m.index + m[0].length + 20);
+      if (!start && (RE_START.test(before) || (/报名/.test(before) && /(开放|开启|启动|开始)/.test(after)))) start = day;
+      if (!deadline && RE_END.test(before)) deadline = day;
+    }
+  }
+  // 状态推断（保守，配合证据让用户自行核对）
+  let status = '未见报名信息';
+  const hasOpen = /正在报名|报名中|立即报名|我要报名|点击报名|报名入口|在线报名|报名系统/.test(text);
+  const hasClosed = /报名\s*(已经|已)?\s*(结束|截止|关闭)|报名通道关闭|报名已截止|报名已结束/.test(text);
+  if (hasOpen) status = '报名中';
+  else if (hasClosed) status = '报名已截止';
+  if (status === '未见报名信息' && start && new Date(start) > new Date()) status = '即将开始报名';
+  if ((!hasCN && dates.length === 0) || (text.length < 80 && dates.length === 0)) status = '官网为动态页面';
+  // 若开始/截止撞成同一天，用证据里更晚的日期修正截止
+  if (start && deadline && start === deadline) {
+    const later = dates.find(x => x > start);
+    if (later) deadline = later;
+  }
+  return {
+    status, start, deadline,
+    dates: Array.from(new Set(dates)).sort().slice(0, 12),
+    evidence
+  };
+}
+/* 首页无报名信息时，挑一个含「报名/通知/赛程」的同域子页再抓一次 */
+function pickSubPage(html, baseUrl) {
+  const base = new URL(baseUrl);
+  let best = null;
+  for (const m of html.matchAll(/<a[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]{0,120}?)<\/a>/gi)) {
+    const t = clean(m[2]);
+    if (!/报名|赛程|通知|公告|赛事|竞赛|安排|时间/.test(t + ' ' + m[1])) continue;
+    let abs; try { abs = new URL(m[1], base); } catch (e) { continue; }
+    if (abs.hostname !== base.hostname || !allowed(abs.href)) continue;
+    const score = /报名|赛程|通知|竞赛|大赛/.test(t) ? 2 : 1;
+    if (!best || score > best.score) best = { url: abs.href, score };
+  }
+  return best ? best.url : null;
+}
 
+let CACHE = null;
 async function refreshAll() {
   const started = new Date().toISOString();
   const results = await Promise.all(SOURCES.map(async s => {
@@ -171,7 +373,7 @@ async function scanOne(target, depth, pages, all, budgetMs) {
 
 export default {
   async fetch(request) {
-    if (request.method === 'OPTIONS') return json({}, 204);
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const u = new URL(request.url);
     const p = u.pathname;
     try {
@@ -183,6 +385,36 @@ export default {
         notices: CACHE ? CACHE.notices.slice(0, 40) : []
       });
       if (p === '/api/refresh') return json({ ok: true, ...await refreshAll() });
+      if (p === '/api/schedules' && request.method === 'POST') {
+        const body = await request.json();
+        const targets = Array.isArray(body.targets) ? body.targets.slice(0, 15) : [];
+        const results = await Promise.all(targets.map(async t => {
+          const base = { id: t.id, name: t.name, url: t.url };
+          if (!allowed(t.url)) return { ...base, ok: false, status: '网址不在白名单' };
+          const t0 = Date.now();
+          try {
+            const html = await fetchText(t.url, 12000);
+            let info = extractSchedule(html);
+            let followed = null;
+            if (info.status === '未见报名信息' || info.status === '官网为动态页面') {
+              const sub = pickSubPage(html, t.url);
+              if (sub) {
+                try {
+                  const html2 = await fetchText(sub, 9000);
+                  const info2 = extractSchedule(html2);
+                  if (info2.evidence.length > info.evidence.length || info2.status === '报名中' || info2.status === '报名已截止') {
+                    info = info2; followed = sub;
+                  }
+                } catch (e) { /* 子页失败不影响首页结果 */ }
+              }
+            }
+            return { ...base, ok: true, ...info, followed, ms: Date.now() - t0, fetchedAt: new Date().toISOString() };
+          } catch (e) {
+            return { ...base, ok: false, status: '抓取失败', error: String(e.message || e).slice(0, 80), ms: Date.now() - t0 };
+          }
+        }));
+        return json({ ok: true, results });
+      }
       if (p === '/api/scan' || p === '/api/scan-one') {
         const target = (u.searchParams.get('url') || '').trim();
         if (!allowed(target)) return json({ ok: false, error: '网址不在允许范围内（仅支持南信大与白名单赛事官网）' });

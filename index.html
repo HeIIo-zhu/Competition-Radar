@@ -120,6 +120,20 @@ select{height:34px;border-radius:9px;border:1px solid var(--line);background:var
 .tag.g{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
 .tag.w{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
 .hint{font-size:11.5px;color:var(--text3);border-top:1px dashed var(--line);padding-top:8px;margin-top:auto}
+.schedline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);color:var(--text3)}
+.schedline .sdot{width:6px;height:6px;border-radius:50%;background:var(--brand);flex:0 0 auto}
+.schedline.muted{opacity:.72}
+.schedline .sstat{font-weight:600;color:var(--warn)}
+.schedline .sstat.ok{color:var(--ok)}
+.schedline .sstat.closed{color:var(--text3)}
+.schedline .sd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-variant-numeric:tabular-nums}
+.schedline .stt{margin-left:auto;font-size:10.5px;color:var(--text3)}
+.liveflag{font-size:10.5px;background:var(--brand);color:#fff;border-radius:5px;padding:1px 6px;margin-left:6px;font-weight:400;vertical-align:2px}
+.schedgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+.schedcell{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.schedcell .k{font-size:11px;color:var(--text3)}
+.schedcell .v{font-size:14px;font-weight:600;margin-top:3px;line-height:1.4}
+.evid{font-size:12px;color:var(--text2);background:var(--panel2);border-left:3px solid var(--brand);border-radius:0 8px 8px 0;padding:7px 10px;margin-top:7px;line-height:1.7;word-break:break-all}
 
 /* timeline */
 .tl{margin-top:16px;display:flex;flex-direction:column;gap:12px}
@@ -332,6 +346,7 @@ footer b{color:var(--text2)}
 <script src="data/details.js"></script>
 <script src="data/major.js"></script>
 <script src="data/config.js"></script>
+<script src="data/targets.js"></script>
 <script>
 (function(){
   "use strict";
@@ -540,6 +555,20 @@ footer b{color:var(--text2)}
       tags.appendChild(el('span','tag','赛程待查'));
     }
     c.appendChild(tags);
+    const sc = schedOf(it.id);
+    if(sc){
+      const isOpen = sc.ok && (sc.status==='报名中' || sc.status==='即将开始报名');
+      const scCls = isOpen ? 'ok' : (sc.status==='报名已截止' ? 'closed' : '');
+      const line = el('div','schedline');
+      line.innerHTML = '<i class="sdot"></i><span>官网实时</span><b class="sstat '+scCls+'">'+esc(sc.status)+'</b>'
+        + (sc.start? '<span class="sd">开始报名 '+esc(sc.start)+'</span>':'')
+        + (sc.deadline? '<span class="sd">截止 '+esc(sc.deadline)+'</span>':'')
+        + ((!sc.start && !sc.deadline && sc.dates && sc.dates.length)? '<span class="sd">官网出现 '+sc.dates.length+' 个日期</span>':'')
+        + (sc.fetchedAt? '<span class="stt">'+esc(fmtTime(sc.fetchedAt))+'</span>':'');
+      c.appendChild(line);
+    } else if(HAS_API){
+      c.appendChild(el('div','schedline muted','<span>官网日程：等待刷新…</span>'));
+    }
     c.appendChild(el('div','hint', it.ext? ('注：'+esc(it.ext)) : (it.url? '官网：'+esc(it.url.replace(/^https?:\/\//,'').slice(0,46)) : '点击查看备赛清单与校内路径')));
     if(dir==='other' && state.dir==='all') c.classList.add('dim');
     c.onclick = ()=>openDrawer(it);
@@ -604,6 +633,45 @@ footer b{color:var(--text2)}
       + '<div class="k">赛事官网</div><div class="v">'+(it.url? '<a href="'+esc(it.url)+'" target="_blank" rel="noopener">'+esc(it.url)+'</a>' : '<span style="color:var(--text3)">以学院转发通知为准</span>')+'</div>'
       + '</div>';
     b.appendChild(s1);
+
+    const sc = schedOf(it.id);
+    if(sc){
+      const sL=el('div','sec');
+      sL.innerHTML='<h4>官网实时日程 <span class="liveflag">自动推断</span></h4>'
+        + '<div class="hintbox">刷新时抓取 <a href="'+esc(sc.url)+'" target="_blank" rel="noopener">'+esc(sc.url)+'</a>'
+        + (sc.followed? ' 并跟进 <a href="'+esc(sc.followed)+'" target="_blank" rel="noopener">报名/通知子页</a>':'')
+        + ' 得到。状态与日期由页面文字自动推断，<b>仅供快速判断，正式安排请以官网原文为准</b>。</div>';
+      const g=el('div','schedgrid');
+      [['官网状态',sc.status],['开始报名',sc.start||'—'],['报名截止',sc.deadline||'—'],['抓取时间',sc.fetchedAt?fmtTime(sc.fetchedAt):'—']]
+        .forEach(pair=>{ const c=el('div','schedcell'); c.innerHTML='<div class="k">'+pair[0]+'</div><div class="v">'+esc(pair[1])+'</div>'; g.appendChild(c); });
+      sL.appendChild(g);
+      if(sc.dates && sc.dates.length){
+        sL.appendChild(el('div','hintbox','页面出现的日期（点击可加入本赛事时间轴）：'));
+        const dd=el('div','dates'); dd.style.marginTop='8px';
+        sc.dates.forEach(dt=>{
+          const c=el('div','dchip','📅 '+dt); c.title='点击加入该赛事的赛程时间轴';
+          c.onclick=()=>{
+            overrides[it.id]=overrides[it.id]||[];
+            if(!overrides[it.id].some(o=>o.d===dt)){
+              overrides[it.id].push({d:dt,t:'官网出现的新日期'});
+              store.write({stars:Array.from(stars),checks:checks,overrides:overrides});
+              toast('已加入节点：'+dt);
+            }
+            c.classList.add('added'); c.textContent='✓ '+dt;
+          };
+          dd.appendChild(c);
+        });
+        sL.appendChild(dd);
+      }
+      if(sc.evidence && sc.evidence.length){
+        sL.appendChild(el('div','hintbox','页面原文证据：'));
+        sc.evidence.forEach(e=>sL.appendChild(el('div','evid',esc(e))));
+      }
+      if(!sc.ok) sL.appendChild(el('div','hintbox','抓取失败：'+esc(sc.error||sc.status)));
+      b.appendChild(sL);
+    } else if(HAS_API){
+      b.appendChild(el('div','sec','<h4>官网实时日程</h4><div class="hintbox">尚未抓取该赛事官网，点右上角「刷新最新」即可拉取报名状态与日期。</div>'));
+    }
 
     if(d && nodesOf(it).length){
       const s2 = el('div','sec');
@@ -771,6 +839,82 @@ footer b{color:var(--text2)}
   const live = { on:false, last:null, notices:[], results:[], scan:{dates:[],pages:[]} };
   const overrides = saved.overrides || {};
 
+  /* ── 赛事官网实时日程：打开自动刷一次，点刷新再强制刷一次 ───────── */
+  const SCHED_KEY = 'nuist_radar_sched_v1';
+  const GROUP_SIZE = 12;                 // 每组赛事数（Worker 单次子请求上限 50，留足余量）
+  const AUTO_MIN_GAP = 60 * 1000;       // 打开时 1 分钟内刚刷过就沿用缓存；点「刷新最新」始终强制重抓
+  let schedules = { ts:0, map:{} };
+  try{
+    const c = JSON.parse(localStorage.getItem(SCHED_KEY)||'null');
+    if(c && c.map) schedules = { ts:c.ts||0, map:c.map||{} };
+  }catch(e){}
+  const schedOf = id => schedules.map[id] || null;
+  function saveSched(){ try{ localStorage.setItem(SCHED_KEY, JSON.stringify({ts:schedules.ts,map:schedules.map})); }catch(e){} }
+  const refreshState = { busy:false, done:0, total:0 };
+  function fmtAgo(ts){
+    const sec = Math.max(0, Math.round((Date.now()-ts)/1000));
+    if(sec<60) return sec+' 秒前';
+    if(sec<3600) return Math.round(sec/60)+' 分钟前';
+    return Math.round(sec/3600)+' 小时前';
+  }
+  function apiPost(path, body, ms){
+    return new Promise((resolve,reject)=>{
+      const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), ms||60000);
+      fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal})
+        .then(r=>r.json()).then(j=>{clearTimeout(t);resolve(j);}).catch(e=>{clearTimeout(t);reject(e);});
+    });
+  }
+  function stepProgress(label){
+    refreshState.done++;
+    setLive(true,'正在刷新 '+label+' · '+refreshState.done+'/'+refreshState.total,'逐组抓取各赛事官网，页面可继续使用');
+    if($('#panel').classList.contains('on')) renderPanel();
+  }
+  async function refreshEverything(auto){
+    if(refreshState.busy) return;
+    if(IS_ONLINE && !HAS_API){ toast('公网静态版不支持实时刷新；其余功能完整可用'); return; }
+    if(!live.on){ await pingService(); }
+    if(!live.on){
+      openPanel(); renderPanel();
+      toast(HAS_API ? '刷新失败，请稍后重试' : '实时刷新需要本地服务');
+      return;
+    }
+    const canSched = HAS_API && typeof TARGETS!=='undefined' && TARGETS.length>0;
+    if(auto && schedules.ts && Date.now()-schedules.ts < AUTO_MIN_GAP){
+      setLive(true,'已载入 '+fmtAgo(schedules.ts)+' 的官网结果 · 点「刷新最新」可强制重抓',
+        Object.keys(schedules.map).length+' 项赛事官网 · 内置数据 2026-10-29');
+      render(); return;
+    }
+    refreshState.busy=true; live.busy=true;
+    const groups=[];
+    if(canSched) for(let i=0;i<TARGETS.length;i+=GROUP_SIZE) groups.push(TARGETS.slice(i,i+GROUP_SIZE));
+    refreshState.total=1+groups.length; refreshState.done=0;
+    $('#liveDot').className='livedot busy';
+    setLive(true,'正在刷新 0/'+refreshState.total+' · 校内通知 + 各赛事官网','逐组抓取中，页面可继续使用');
+    const tasks=[];
+    tasks.push(apiGet('/api/refresh',120000).then(j=>{
+      live.results=j.results||[]; live.notices=j.notices||[]; live.last=j.refreshedAt; saveLive();
+      stepProgress('校内通知');
+    }).catch(()=>stepProgress('校内通知（失败）')));
+    groups.forEach((g,i)=>tasks.push(
+      apiPost('/api/schedules',{targets:g},60000).then(j=>{
+        (j.results||[]).forEach(r=>{ schedules.map[r.id]=r; });
+        stepProgress('赛事官网 '+(i+1)+'/'+groups.length);
+      }).catch(()=>stepProgress('赛事官网 '+(i+1)+'/'+groups.length+'（失败）'))
+    ));
+    try{ await Promise.all(tasks); }catch(e){}
+    schedules.ts=Date.now(); saveSched();
+    refreshState.busy=false; live.busy=false;
+    const okN=(live.results||[]).filter(r=>r.ok).length;
+    const scN=Object.keys(schedules.map).length;
+    const openN=Object.values(schedules.map).filter(r=>r.status==='报名中').length;
+    setLive(true,
+      '刷新完成 · '+live.notices.length+' 条通知 · '+scN+' 项赛事官网（'+openN+' 项报名中）',
+      canSched ? ('刚刷新 · '+okN+'/'+(live.results||[]).length+' 个校内栏目 · 含各赛事报名状态与日期') : '刚刷新 · 赛事官网刷新需配置公网 Worker');
+    render();
+    if($('#panel').classList.contains('on')) renderPanel();
+    toast('刷新完成：'+scN+' 项赛事官网');
+  }
+
   function fmtTime(iso){
     try{ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
     catch(e){ return iso; }
@@ -812,29 +956,9 @@ footer b{color:var(--text2)}
     try{ localStorage.setItem('nuist_radar_live', JSON.stringify({refreshedAt:live.last, notices:live.notices.slice(0,80), results:live.results})); }catch(e){}
   }
   async function doRefresh(){
-    if(live.busy) return;
+    if(refreshState.busy) return;
     if(IS_ONLINE && !HAS_API){ toast('公网静态版不支持实时刷新；其余功能完整可用'); return; }
-    if(!live.on){ await pingService(); }
-    if(!live.on){
-      openPanel(); renderPanel();
-      toast(HAS_API ? '刷新失败，请稍后重试' : '实时刷新需要本地服务：双击 start-server.cmd');
-      return;
-    }
-    live.busy=true;
-    $('#liveDot').className='livedot busy';
-    $('#lText').textContent='正在从官网抓取最新通知…';
-    try{
-      const j = await apiGet('/api/refresh', 120000);
-      live.results=j.results||[]; live.notices=j.notices||[]; live.last=j.refreshedAt;
-      live.busy=false;
-      const okN=(live.results||[]).filter(r=>r.ok).length;
-      setLive(true, '刷新完成 · 抓到 '+live.notices.length+' 条通知（'+okN+'/'+live.results.length+' 个栏目）', '上次刷新 '+fmtTime(j.refreshedAt));
-      saveLive(); renderPanel(); toast('刷新完成：'+live.notices.length+' 条通知');
-    }catch(e){
-      live.busy=false;
-      setLive(true,'刷新失败：'+String(e.message||e).slice(0,50));
-      toast('刷新失败：'+String(e.message||e));
-    }
+    await refreshEverything(false);
   }
   function nodesOf(it){
     const d = detailOf(it.name); if(!d) return [];
@@ -847,10 +971,15 @@ footer b{color:var(--text2)}
     const s1=el('div','sec');
     s1.innerHTML='<h4>通道状态</h4><div class="hintbox">'+
       (live.on
-        ? '本地服务 <code>'+API+'</code> 已连接。点击右上角「刷新最新」即可实时抓取南信大信息公告栏、藕舫学院与创新创业学院的最新通知，并与内置节点比对。'
-        : '未检测到本地服务。浏览器受跨域限制无法直接抓官网，需由本地服务代抓。<br>启动方式：在项目目录双击 <code>start-server.cmd</code>（或执行 <code>node server.js</code>），再打开 <code>http://127.0.0.1:8899</code>。')+
-      (live.last? '<br>上次刷新：'+fmtTime(live.last) : '')+
-      '<br>把这个「竞赛雷达」文件夹整个拷给同学/打包成 zip 即可：静态功能零环境双击可用，刷新功能自动挑 Node 或 PowerShell 版服务。'+
+        ? (HAS_API
+            ? '公网刷新接口 <code>'+API+'</code> 已连接。<b>每次打开页面自动刷新一次</b>，点「刷新最新」再强制刷新一次；抓取南信大 5 个官方栏目 + '+(typeof TARGETS!=='undefined'?TARGETS.length:0)+' 个赛事官网的报名状态与日程。'
+            : '本地服务 <code>'+API+'</code> 已连接，可抓取南信大校内通知。赛事官网日程刷新需配置公网 Worker 接口。')
+        : (HAS_API
+            ? '未检测到公网刷新接口。请检查 <code>data/config.js</code> 里的 Worker 网址是否正确、Worker 是否已部署。'
+            : '未检测到本地服务。浏览器受跨域限制无法直接抓官网，需由本地服务代抓。'))+
+      (live.last? '<br>上次通知刷新：'+fmtTime(live.last) : '')+
+      (schedules.ts? '<br>上次赛事官网刷新：'+fmtTime(schedules.ts)+'（'+Object.keys(schedules.map).length+' 项）' : '')+
+      '<br>静态功能零环境可用；刷新结果保存在浏览器本地，断网也能看上次抓取的内容。'+
       '</div>';
     b.appendChild(s1);
 
@@ -879,6 +1008,30 @@ footer b{color:var(--text2)}
       });
     }
     b.appendChild(s3);
+
+    if(HAS_API){
+      const sS=el('div','sec');
+      const arr=Object.values(schedules.map), cnt={};
+      arr.forEach(r=>{ cnt[r.status]=(cnt[r.status]||0)+1; });
+      sS.innerHTML='<h4>各赛事官网抓取结果 <span class="liveflag">'+(refreshState.busy? '进行中 '+refreshState.done+'/'+refreshState.total : '共 '+arr.length+' 项')+'</span></h4>'
+        + '<div class="hintbox">每次打开页面自动刷新一次，点「刷新最新」再强制刷新一次。分组并发抓取 '+(typeof TARGETS!=='undefined'?TARGETS.length:0)+' 个赛事官网，提取报名状态、开始/截止日期与原文证据。<b>状态为自动推断，正式安排请以官网原文为准</b>。</div>';
+      const g=el('div','schedgrid');
+      Object.entries(cnt).sort((a,b)=>b[1]-a[1]).forEach(pair=>{
+        const c=el('div','schedcell'); c.innerHTML='<div class="k">'+esc(pair[0])+'</div><div class="v">'+pair[1]+'</div>'; g.appendChild(c);
+      });
+      sS.appendChild(g);
+      const focus=arr.filter(r=>r.status==='报名中'||r.status==='报名已截止'||r.status==='即将开始报名').slice(0,40);
+      if(focus.length){
+        sS.appendChild(el('div','hintbox','有明确报名状态的赛事：'));
+        focus.forEach(r=>{
+          const c=el('div','logline');
+          c.innerHTML='<span class="st" style="background:'+(r.status==='报名中'?'var(--ok)':r.status==='报名已截止'?'var(--idle)':'var(--warn)')+'"></span>'
+            +'<span class="nm">'+esc(r.name)+'</span><span class="ms">'+esc(r.status)+(r.start?' · 开始 '+esc(r.start):'')+(r.deadline?' · 截止 '+esc(r.deadline):'')+'</span>';
+          sS.appendChild(c);
+        });
+      }
+      b.appendChild(sS);
+    }
 
     const s4=el('div','sec'); s4.innerHTML='<h4>官网赛程日期扫描</h4>';
     const row=el('div','scanrow');
@@ -959,7 +1112,11 @@ footer b{color:var(--text2)}
       setLive(true,(HAS_API?'公网接口已连接 · 可实时刷新官网':'本地服务已连接 · 可实时刷新官网'),'上次刷新 '+fmtTime(live.last));
     }
   }catch(e){}
-  pingService();
+  if(HAS_API){
+    pingService().then(()=>{ setTimeout(()=>refreshEverything(true), 400); });
+  } else {
+    pingService();
+  }
 })();
 </script>
 </body>
