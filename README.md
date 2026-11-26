@@ -40,7 +40,7 @@ Cloudflare Worker（免费，worker.js）
 各赛事组委会官网 / 南信大信息公告栏
 ```
 
-- 前端：`index.html` + `data/*.js`，相对路径，可直接放在 `https://<用户名>.github.io/<仓库名>/` 子路径下。
+- 前端：`index.html` + `data/*.js`，相对路径，已部署在 `https://heiio-zhu.github.io/Competition-Radar/` 子路径下。
 - 后端：`worker.js` 是 Cloudflare Workers 的 ES module 写法，全部用原生 `fetch`，无第三方依赖；域名白名单（133 条）防止被当成开放代理。
 - 缓存：结果存浏览器 localStorage，断网也能看上次抓取内容；`AUTO_MIN_GAP = 0`，严格每次打开都重新抓。
 - 免费额度：Workers 免费 10 万次/天、单次 50 子请求；本项目一次完整刷新约 9–15 次入站请求，每组 12–24 个子请求，余量充足。
@@ -87,7 +87,7 @@ Cloudflare Worker（免费，worker.js）
 **第 2 步：发布网页（二选一）**
 
 - **Cloudflare Pages**：Workers & Pages → Create application → Drag and drop your files → 把整个文件夹拖进去 → 得到 `https://<项目名>.pages.dev`
-- **GitHub Pages**：建空 Public 仓库（不要勾 Add a README）→ 双击 `推送到GitHub.cmd` 输入仓库地址推送 → Settings → Pages → `main / (root)` → 得到 `https://<用户名>.github.io/<仓库名>/`
+- **GitHub Pages（已上线）**：Public 仓库 `HeIIo-zhu/Competition-Radar` → `main / (root)` → 得到 `https://heiio-zhu.github.io/Competition-Radar/`；以后更新直接 push，Pages 自动重建。
 
 > Worker 是跨平台的：同一个 Worker 地址可以同时给 Cloudflare Pages 和 GitHub Pages 用，两边都能在线刷新。详细操作见项目根目录的 `部署操作清单.md`。
 
