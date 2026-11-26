@@ -200,6 +200,7 @@ footer b{color:var(--text2)}
 .note ul{margin:0;padding-left:18px}
 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;z-index:90}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+.maker{position:fixed;left:10px;bottom:8px;font-size:10px;color:var(--text3);opacity:.55;pointer-events:none;z-index:5;letter-spacing:.5px;user-select:none}
 .livedot{width:7px;height:7px;border-radius:50%;background:var(--idle);display:inline-block;flex:0 0 auto}
 .livedot.on{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 20%,transparent)}
 .livedot.busy{background:var(--warn);animation:pulse 1s infinite}
@@ -318,6 +319,8 @@ footer b{color:var(--text2)}
     <b>实时刷新</b>：浏览器受跨域限制不能直接抓官网，由公网 Cloudflare Worker（免费）代抓——每次打开页面自动刷新一次，点「刷新最新」再强制刷新一次；抓取南信大 5 个官方栏目与 71 个赛事官网的报名状态、开始/截止日期。未配置 Worker 地址时刷新按钮自动隐藏，页面仍可使用内置数据。
   </footer>
 </div>
+
+<div class="maker">制作者 · 26朱奕铭</div>
 
 <div class="mask" id="mask"></div>
 <aside class="drawer" id="panel">
