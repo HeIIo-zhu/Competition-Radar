@@ -315,7 +315,7 @@ footer b{color:var(--text2)}
     <b>数据来源</b>：南京信息工程大学 2026 年学生创新创业竞赛目录（教务处·创新创业学院（藕舫学院），2026-04-09 发布，附件1 Ⅰ、Ⅱ类 111 项；PDF 原文见「资料」目录）；
     赛事赛程时间来自各赛事组委会官网通知、教育部通知与主办方公告；校内节点来自南信大信息公告栏「创新创业」栏目（正文需校内 VPN）。<br>
     <b>说明</b>：节点标注「预计」的为按往年固定月份推算的参考值，正式参赛请以当届官方通知为准；「专业方向」是本应用按通信工程视角做的个人化归类，仅用于筛选，不改变学校官方认定；本应用为信息聚合工具，不代表学校官方发布。<br>
-    <b>实时刷新</b>：浏览器受跨域限制不能直接抓官网，需由本地服务（<code>server.js</code>，零依赖）代抓——双击 <code>start-server.cmd</code> 即可启动，页面会自动连上；实时通道抓取的是南信大信息公告栏（创新创业 / 文件公告）、藕舫学院与创新创业学院的最新通知，并支持对任意赛事官网做赛程日期扫描、手动补节点。
+    <b>实时刷新</b>：浏览器受跨域限制不能直接抓官网，由公网 Cloudflare Worker（免费）代抓——每次打开页面自动刷新一次，点「刷新最新」再强制刷新一次；抓取南信大 5 个官方栏目与 71 个赛事官网的报名状态、开始/截止日期。未配置 Worker 地址时刷新按钮自动隐藏，页面仍可使用内置数据。
   </footer>
 </div>
 
@@ -848,7 +848,7 @@ footer b{color:var(--text2)}
   /* ── 赛事官网实时日程：打开自动刷一次，点刷新再强制刷一次 ───────── */
   const SCHED_KEY = 'nuist_radar_sched_v1';
   const GROUP_SIZE = 12;                 // 每组赛事数（Worker 单次子请求上限 50，留足余量）
-  const AUTO_MIN_GAP = 60 * 1000;       // 打开时 1 分钟内刚刷过就沿用缓存；点「刷新最新」始终强制重抓
+  const AUTO_MIN_GAP = 0;                // 每次打开页面都强制重抓；点「刷新最新」同样强制重抓
   let schedules = { ts:0, map:{} };
   try{
     const c = JSON.parse(localStorage.getItem(SCHED_KEY)||'null');
@@ -982,7 +982,7 @@ footer b{color:var(--text2)}
             : '本地服务 <code>'+API+'</code> 已连接，可抓取南信大校内通知。赛事官网日程刷新需配置公网 Worker 接口。')
         : (HAS_API
             ? '未检测到公网刷新接口。请检查 <code>data/config.js</code> 里的 Worker 网址是否正确、Worker 是否已部署。'
-            : '未检测到本地服务。浏览器受跨域限制无法直接抓官网，需由本地服务代抓。'))+
+            : '公网刷新接口未连接。请在 data/config.js 填入 Cloudflare Worker 地址后重新部署。'))+
       (live.last? '<br>上次通知刷新：'+fmtTime(live.last) : '')+
       (schedules.ts? '<br>上次赛事官网刷新：'+fmtTime(schedules.ts)+'（'+Object.keys(schedules.map).length+' 项）' : '')+
       '<br>静态功能零环境可用；刷新结果保存在浏览器本地，断网也能看上次抓取的内容。'+

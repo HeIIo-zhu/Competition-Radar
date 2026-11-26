@@ -1,88 +1,111 @@
-# 竞赛雷达 · GitHub Pages 版
+# 知心 · 竞赛雷达（NUIST Competition Radar）
 
-这个文件夹已经按 GitHub Pages 的要求准备好，可以直接推到仓库并开启 Pages。
+> 面向南京信息工程大学学生的竞赛信息聚合与备赛工具：把学校 2026 年竞赛目录做成可筛选的交互看板，并通过免费的 Cloudflare Worker **实时抓取 71 个赛事官网**，直接展示报名状态、开始报名日期与报名截止日期。
 
-包含：`index.html`、`data/`（含 `config.js` 与 `targets.js`）、`资料/`、`.nojekyll`、`worker.js`（可选，用于在线刷新）、`推送到GitHub.cmd`。
-不含：本地服务脚本（`server.js` / `start-server.*`）——这些只在本地用，公网上不需要。
+**在线演示**：`https://nuist-radar.pages.dev` ← 把这里换成你自己的部署地址（Cloudflare Pages 或 GitHub Pages 均可）。
 
-## 一、发布步骤
+---
 
-### 1. 建一个空仓库
+## 为什么做这个
 
-打开 https://github.com/new ：
-- Repository name：例如 `nuist-competition-radar`
-- 选 **Public**
-- **不要**勾选 “Add a README file”（保持空仓库，避免 push 冲突）
+学校的竞赛目录是一份 PDF，信息分散、没有筛选、看不到官网最新报名状态。这个项目解决三件事：
 
-### 2. 上传（二选一）
+1. **看得清**：112 项赛事（学校官方 Ⅰ/Ⅱ 类 111 项 + 蓝桥杯单列 1 项）按类别、专业方向、时间分组，支持搜索、星标、时间轴、备赛清单、CSV 导出。
+2. **刷得新**：浏览器不能跨域抓官网，所以用 Cloudflare Worker 做免费代理，**每次打开页面自动抓一遍，点「刷新最新」再强制抓一遍**；一次刷新同时覆盖南信大 5 个官方栏目与 71 个赛事官网。
+3. **看得懂**：直接从赛事官网原文提取「报名中 / 报名已截止 / 即将开始 / 官网为动态页面」，连同开始报名、报名截止日期和原文证据一起展示；纯前端渲染、抓不到内容的官网会如实标注，不编造时间。
 
-**方式 A：网页拖拽（不用装 git）**
+## 功能亮点
 
-在新建的仓库页面点 **uploading an existing file**，把这个文件夹里的**全部文件**（包括 `data`、`资料` 文件夹和隐藏的 `.nojekyll`）拖进去 → **Commit changes**。
+| 功能 | 说明 |
+|---|---|
+| **官网实时日程** | 71 个赛事官网的报名状态、开始/截止日期、原文证据片段；跟进一个同域「报名/通知/赛程」子页再抓一次 |
+| **双通道刷新** | 校内通知（创新创业 / 文件公告 / 藕舫学院）+ 赛事官网日程，两者互补：校内截止常早于官网 1–2 周 |
+| **校内节点 + 时间轴** | 按赛事整理备赛节点，「预计」项为按往年月份推算，可手动补充并加入时间轴 |
+| **专业方向筛选** | 以通信工程视角分为综合双创、电子信息与通信、计算机与软件、机器人与自动化、数理与建模、其他理工科、暂不参加 |
+| **本地个性化** | 星标、勾选、自定义节点、主题切换、CSV 导出，全部存在浏览器 localStorage，无需登录 |
+| **零依赖前端** | 原生 HTML / CSS / JavaScript，无框架、无构建步骤，双击 `index.html` 也能看内置数据 |
 
-**方式 B：命令行 push（本机已帮你 init + commit）**
-
-在这个文件夹打开 Git Bash / PowerShell：
-
-```bash
-git remote add origin https://github.com/<你的用户名>/<仓库名>.git
-git push -u origin main
-```
-
-（本机已经执行过 `git init` 和第一次 commit，分支是 `main`，你只需加 remote 并 push。）
-
-### 3. 开启 Pages
-
-仓库顶部 **Settings → Pages**（左侧栏）：
-- **Build and deployment** 下，Source 选 **Deploy from a branch**
-- Branch 选 `main`，目录选 **/ (root)**
-- 点 **Save**
-
-等 1–2 分钟，网址为：
+## 技术架构
 
 ```
-https://<你的用户名>.github.io/<仓库名>/
+浏览器（GitHub Pages / Cloudflare Pages 静态站点）
+   │  打开页面自动 POST /api/schedules（分 6 组，每组 12 项）
+   │  点「刷新最新」再强制 POST 一次
+   ▼
+Cloudflare Worker（免费，worker.js）
+   ├─ /api/refresh     → 南信大 5 个官方栏目，提取最新通知
+   ├─ /api/schedules   → 71 个赛事官网，提取报名状态与日期（域名白名单）
+   └─ /api/scan        → 单站赛程日期扫描
+   ▼
+各赛事组委会官网 / 南信大信息公告栏
 ```
 
-把这个网址发给别人即可。以后更新只需替换文件并 commit/push，Pages 会自动重新发布。
+- 前端：`index.html` + `data/*.js`，相对路径，可直接放在 `https://<用户名>.github.io/<仓库名>/` 子路径下。
+- 后端：`worker.js` 是 Cloudflare Workers 的 ES module 写法，全部用原生 `fetch`，无第三方依赖；域名白名单（133 条）防止被当成开放代理。
+- 缓存：结果存浏览器 localStorage，断网也能看上次抓取内容；`AUTO_MIN_GAP = 0`，严格每次打开都重新抓。
+- 免费额度：Workers 免费 10 万次/天、单次 50 子请求；本项目一次完整刷新约 9–15 次入站请求，每组 12–24 个子请求，余量充足。
 
-## 二、开启在线刷新（可选，免费）
+## 数据来源与说明
 
-默认不配接口时，刷新按钮会自动隐藏，页面照常用内置数据。要开启在线刷新：
+- 竞赛目录：南京信息工程大学《2026 年学生创新创业竞赛目录》（教务处 · 创新创业学院（藕舫学院），2026-04-09 发布），PDF 原文见 `资料/`。
+- 赛程时间：来自各赛事组委会官网、教育部通知与主办方公告。
+- 校内节点：来自南信大信息公告栏「创新创业」栏目（正文需校内 VPN）。
+- **报名状态是从官网文字自动推断的，不是官网提供的结构化字段**；界面已标注，正式时间、报名资格请以当届官方通知与官网原文为准。
+- 纯前端渲染的官网（如蓝桥杯、软件杯）抓不到静态文字，会标为「官网为动态页面」，需点官网链接人工核对。
+- 「专业方向」是为个人筛选做的归类，不改变学校官方认定；本工具不代表学校官方发布。
 
-1. 登录 https://dash.cloudflare.com → **Workers & Pages → Create → Worker → Create Worker**
-2. 名字填 `nuist-radar-api` → **Deploy**
-3. 点 **Edit code**，删掉原有内容，粘贴本文件夹 `worker.js` 全文 → **Deploy**
-4. 复制 Worker 网址，形如 `https://nuist-radar-api.<你的子域名>.workers.dev`
-5. 编辑 `data/config.js`，把网址填进引号：
+## 目录结构
+
+```
+.
+├── index.html              主应用（看板 / 时间轴 / 抽屉 / 刷新面板）
+├── worker.js               Cloudflare Worker 代理，粘贴到 Worker 编辑器即可
+├── data/
+│   ├── config.js           API_BASE：填 Worker 地址后开启在线刷新
+│   ├── catalog.js          112 项赛事目录
+│   ├── details.js          重点赛事静态赛程与备赛节点
+│   ├── major.js            通信工程视角的专业方向分组 + 蓝桥杯单列
+│   └── targets.js          71 个有官网链接的赛事目标（自动生成）
+├── 资料/                   学校 2026 竞赛目录 PDF 与文本提取
+├── .nojekyll               保证 GitHub Pages 不忽略文件
+└── 推送到GitHub.cmd          Windows 一键推送脚本
+```
+
+## 部署自己的实例（都免费）
+
+**第 1 步：建 Worker（在线刷新的来源）**
+
+1. 打开 https://dash.cloudflare.com → **Workers & Pages → Create → Worker**，名字填 `nuist-radar-api` → **Deploy**
+2. **Edit code** → 清空原内容 → 粘贴本项目 `worker.js` 全文 → **Deploy**
+3. 浏览器打开 `https://nuist-radar-api.<你的子域>.workers.dev/api/ping`，返回 `{"ok":true,...}` 即成功
+4. 编辑 `data/config.js`：
 
    ```js
-   const API_BASE = 'https://nuist-radar-api.<你的子域名>.workers.dev';
+   const API_BASE = 'https://nuist-radar-api.<你的子域>.workers.dev';
    ```
 
-6. commit + push 到 GitHub（Pages 会自动更新）
+**第 2 步：发布网页（二选一）**
 
-配好之后，**打开页面自动刷新一次，点「刷新最新」再强制刷新一次**，抓两部分：
+- **Cloudflare Pages**：Workers & Pages → Create application → Drag and drop your files → 把整个文件夹拖进去 → 得到 `https://<项目名>.pages.dev`
+- **GitHub Pages**：建空 Public 仓库（不要勾 Add a README）→ 双击 `推送到GitHub.cmd` 输入仓库地址推送 → Settings → Pages → `main / (root)` → 得到 `https://<用户名>.github.io/<仓库名>/`
 
-| 抓什么 | 数据源 | 得到什么 |
-|---|---|---|
-| 校内通知 | 南信大 5 个官方栏目 | 最新通知标题 / 日期 / 发布学院 / 链接 |
-| 赛事官网日程 | `data/targets.js` 里 **71 个赛事官网** | 报名状态（报名中 / 已截止 / 即将开始 / 动态页 / 抓取失败）、开始报名日期、报名截止日期、页面日期、原文证据 |
+> Worker 是跨平台的：同一个 Worker 地址可以同时给 Cloudflare Pages 和 GitHub Pages 用，两边都能在线刷新。详细操作见项目根目录的 `部署操作清单.md`。
 
-- 卡片直接显示「官网实时 · 报名中 · 开始报名 X · 截止 Y」
-- 点开卡片有完整官网日程区（含官网链接、跟进子页、原文证据），页面日期可点一下加入时间轴
-- 刷新面板里有 71 项的抓取结果统计
+## 本地运行
 
-按每组 12 个赛事并发（共 6 组 + 1 组校内通知），结果存浏览器本地，断网也能看上次结果。
+- 只想看目录：直接双击 `index.html`（内置数据完整，刷新按钮自动隐藏）。
+- 想本地调试在线刷新：在项目根目录运行 `node server.js`，打开 `http://127.0.0.1:8899`（本地版脚本在 `竞赛雷达/` 目录）。
 
-> 报名状态是从官网文字**自动推断**的，界面有标注，正式时间以官网原文为准。官网首页没有报名信息时会自动跟进一个「报名/通知/赛程」子页；纯前端渲染的官网（蓝桥杯、软件杯等）抓不到内容，会标为「官网为动态页面」，需点官网链接人工核对。
->
-> Cloudflare Worker 免费每天 10 万次请求、每个请求最多 50 个子请求（这里每组只用 12~24 个），无需信用卡；只对白名单里的南信大与 71 个赛事官网域名开放，不会被当成开放代理。这个 Worker 是公网接口，GitHub Pages / Cloudflare Pages / Netlify 都能用。
->
-> **自动刷新节流**：打开页面时若距上次刷新不足 1 分钟会沿用缓存（点「刷新最新」永远强制重抓）。想严格每次打开都抓，把 `index.html` 里的 `AUTO_MIN_GAP` 改成 `0`。
+## 已知限制
 
-## 三、注意
+- 国内访问 `github.io` / `pages.dev` 偶发不稳定；同学打不开时把同一套文件换一家静态托管再传一次即可。
+- 部分官网有反爬或改用前端渲染，会显示「抓取失败」或「官网为动态页面」，属正常现象。
+- 刷新结果存在各自浏览器的 localStorage，不是服务端共享缓存——每位访客打开时各自触发一次抓取。
 
-- `.nojekyll` 不要删，否则 GitHub Pages 可能忽略某些文件。
-- 国内访问 `github.io` 偶尔不稳定；如果同学打不开，可把同样的文件夹拖到 Cloudflare Pages（网址 `*.pages.dev`）或 Netlify Drop。
-- 所有资源用的是相对路径，放在 `https://<用户名>.github.io/<仓库名>/` 这种子路径下不会出问题。
+## 作品说明
+
+面向竞赛答辩 / 展示的中文说明见 `作品说明.md`（项目背景、设计思路、技术要点、演示话术）。
+
+---
+
+本项目为个人课程 / 竞赛作品，数据版权归南京信息工程大学与各赛事组委会所有。
