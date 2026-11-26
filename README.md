@@ -2,7 +2,7 @@
 
 > 面向南京信息工程大学学生的竞赛信息聚合与备赛工具：把学校 2026 年竞赛目录做成可筛选的交互看板，并通过免费的 Cloudflare Worker **实时抓取 71 个赛事官网**，直接展示报名状态、开始报名日期与报名截止日期。
 
-**在线演示**：`https://nuist-radar.pages.dev` ← 把这里换成你自己的部署地址（Cloudflare Pages 或 GitHub Pages 均可）。
+**在线演示**：`https://competition-radar-dzd.pages.dev`（Cloudflare Pages 主线，本仓库 GitHub Pages 部署后也可作为入口）
 
 ---
 
