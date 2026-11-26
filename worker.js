@@ -151,7 +151,26 @@ const ALLOW = [
   'yuanxi.cugb.edu.cn',
   'zju.edu.cn',
   'zpy.cstam.org.cn',
-  'zufe.edu.cn'
+  'zufe.edu.cn',,
+  'case.sppm.tsinghua.edu.cn',
+  'ccsmic.scimeeting.cn',
+  'cpipc.acge.org.cn',
+  'cubec.org.cn',
+  'dtcup.dtxiaotangren.com',
+  'etic.claonline.cn',
+  'qgjxjn.zjnu.edu.cn',
+  'qspfw.moe.gov.cn',
+  'ucc.fltrp.com',
+  'wto.chinalaw.org.cn',
+  'www.antgoculture.com',
+  'www.brskills.com',
+  'www.caanet.org.cn',
+  'www.chinaneccs.cn',
+  'www.cma.gov.cn',
+  'www.cnrobocon.net',
+  'www.moe.gov.cn',
+  'www.ncda.org.cn',
+  'xwkds.sdu.edu.cn',
 ];
 
 const TODAY = new Date('2026-10-29T00:00:00');
