@@ -177,9 +177,10 @@ select{height:34px;border-radius:9px;border:1px solid var(--line);background:var
 .tstep.active .rail i{background:var(--warn);box-shadow:0 0 0 4px color-mix(in srgb,var(--warn) 22%,transparent)}
 .tstep .rail em{flex:1 1 auto;width:2px;background:var(--line);margin:3px 0 -14px}
 .tstep:last-child .rail em{display:none}
+.tstep .txt{min-width:0;flex:1 1 auto;overflow:hidden}
 .tstep .txt .d{font-size:11.5px;color:var(--text3);font-variant-numeric:tabular-nums}
 .tstep .txt .t{font-size:13.5px;font-weight:600;line-height:1.45}
-.tstep .txt .x{font-size:12px;color:var(--text2);margin-top:2px}
+.tstep .txt .tnote{font-size:12px;color:var(--text2);margin-top:2px;line-height:1.55;max-width:100%;overflow-wrap:anywhere}
 .prepgroup{margin-bottom:12px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--panel2)}
 .prepgroup .gh{padding:8px 11px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;cursor:pointer}
 .prepgroup .gh .cnt{margin-left:auto;font-size:11.5px;color:var(--text3);font-weight:500}
@@ -694,7 +695,7 @@ footer b{color:var(--text2)}
         const state2 = nodeState(n);
         const row = el('div','tstep '+state2);
         row.innerHTML = '<div class="rail"><i></i><em></em></div><div class="txt"><div class="d">'+n.d+'</div><div class="t">'+esc(n.t)+'</div>'
-          + (n.s==='future'?'<div class="x">按往届时间推算的预计节点，以官方通知为准</div>':'')+'</div>';
+          + (n.s==='future'?'<div class="tnote">按往届时间推算的预计节点，以官方通知为准</div>':'')+'</div>';
         st.appendChild(row);
       });
       s2.appendChild(st);
