@@ -197,6 +197,10 @@ select{height:34px;border-radius:9px;border:1px solid var(--line);background:var
 .empty .big{font-size:42px;margin-bottom:10px;opacity:.5}
 footer{margin-top:28px;padding:18px 0 10px;border-top:1px solid var(--line);color:var(--text3);font-size:12px;line-height:1.9}
 footer b{color:var(--text2)}
+.tsteps.past .rail i{background:var(--text3);border-color:var(--panel)}
+.tsteps.past .tstep .t{color:var(--text2);font-weight:500}
+.pastbtn{margin-top:11px}
+.ver{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);font-size:11px;color:var(--text3);letter-spacing:.3px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:8px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .note{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-top:14px;box-shadow:var(--shadow)}
@@ -321,7 +325,8 @@ footer b{color:var(--text2)}
     <b>数据来源</b>：南京信息工程大学 2026 年学生创新创业竞赛目录（教务处·创新创业学院（藕舫学院），2026-04-09 发布，附件1 Ⅰ、Ⅱ类 111 项；PDF 原文见「资料」目录）；
     赛事赛程时间来自各赛事组委会官网通知、教育部通知与主办方公告；校内节点来自南信大信息公告栏「创新创业」栏目（正文需校内 VPN）。<br>
     <b>说明</b>：节点标注「预计」的为按往年固定月份推算的参考值，正式参赛请以当届官方通知为准；「专业方向」是本应用按通信工程视角做的个人化归类，仅用于筛选，不改变学校官方认定；本应用为信息聚合工具，不代表学校官方发布。<br>
-    <b>实时刷新</b>：浏览器受跨域限制不能直接抓官网，由公网 Cloudflare Worker（免费）代抓——每次打开页面自动刷新一次，点「刷新最新」再强制刷新一次；抓取南信大 5 个官方栏目与 71 个赛事官网的报名状态、开始/截止日期。未配置 Worker 地址时刷新按钮自动隐藏，页面仍可使用内置数据。
+    <b>实时刷新</b>：浏览器受跨域限制不能直接抓官网，由公网 Cloudflare Worker（免费）代抓——每次打开页面自动刷新一次，点「刷新最新」再强制刷新一次；抓取南信大 5 个官方栏目与 111 项赛事官网的报名状态、开始/截止日期。未配置 Worker 地址时刷新按钮自动隐藏，页面仍可使用内置数据。
+    <div class="ver">版本 v2026.11.27 · 抓取目标 111 项</div>
   </footer>
 </div>
 
@@ -353,6 +358,7 @@ footer b{color:var(--text2)}
 <script src="data/catalog.js"></script>
 <script src="data/details.js"></script>
 <script src="data/major.js"></script>
+<script src="data/past.js"></script>
 <script src="data/config.js"></script>
 <script src="data/targets.js"></script>
 <script>
@@ -687,7 +693,7 @@ footer b{color:var(--text2)}
         + '</div>'));
     }
 
-    if(d && nodesOf(it).length){
+    if(nodesOf(it).length){
       const s2 = el('div','sec');
       s2.innerHTML = '<h4>赛程时间轴</h4>';
       const st = el('div','tsteps');
@@ -700,6 +706,41 @@ footer b{color:var(--text2)}
       });
       s2.appendChild(st);
       b.appendChild(s2);
+    }
+
+    // 往届（上一届）参考日程：今年没有任何节点时，用去年实际时间兜底
+    const pv = (typeof PAST !== 'undefined' && PAST[it.name]) || null;
+    if(pv && pv.nodes && pv.nodes.length){
+      const hasCur = !!(nodesOf(it).length);
+      const s4 = el('div','sec');
+      s4.innerHTML = '<h4>'+pv.year+' 年往届日程（参考）</h4>'
+        + '<div class="hintbox">'+(pv.note
+            ? pv.note
+            : (hasCur
+                ? '往届的实际节点，仅供对照。'
+                : '今年官方通知尚未发布，以下为上一届（'+pv.year+'）的实际节点，可按此提前准备、留意同一时间窗口。'))
+        + (pv.src ? ' <a href="'+pv.src+'" target="_blank" rel="noopener">查看来源</a>' : '')+'</div>';
+      const st2 = el('div','tsteps past');
+      pv.nodes.slice().sort((a,b)=>a.d.localeCompare(b.d)).forEach(n=>{
+        const row = el('div','tstep done');
+        row.innerHTML = '<div class="rail"><i></i><em></em></div><div class="txt"><div class="d">'+n.d+'</div><div class="t">'+esc(n.t)+'</div></div>';
+        st2.appendChild(row);
+      });
+      s4.appendChild(st2);
+      if(!hasCur && !pv.noShift){
+        const btn = el('button','btn pastbtn','按去年推算今年（+1 年）');
+        btn.onclick = ()=>{
+          overrides[it.id] = overrides[it.id] || [];
+          let cnt = 0;
+          pv.nodes.forEach(x=>{
+            const nd = x.d.replace(/^(\d{4})/, (m,y)=>String(+y+1));
+            if(!overrides[it.id].some(o=>o.d===nd)){ overrides[it.id].push({d:nd, t:x.t+'（按往届推算）'}); cnt++; }
+          });
+          saveState(); toast(cnt?('已加入 '+cnt+' 个预计节点'):'这些节点已经在时间轴里了'); openDrawer(it);
+        };
+        s4.appendChild(btn);
+      }
+      b.appendChild(s4);
     }
 
     if(d && d.prep && d.prep.length){
@@ -975,8 +1016,9 @@ footer b{color:var(--text2)}
     await refreshEverything(false);
   }
   function nodesOf(it){
-    const d = detailOf(it.name); if(!d) return [];
-    const base=(d.nodes||[]).slice();
+    const d = detailOf(it.name);
+    const base = (d && d.nodes ? d.nodes.slice() : []);
+    // 没有详情数据的赛事，也允许手动加入的节点（往届推算 / 官网新日期）生效
     (overrides[it.id]||[]).forEach(o=>{ if(!base.some(n=>n.d===o.d)) base.push(Object.assign({},o,{s:'future'})); });
     return base.sort((a,b)=>a.d.localeCompare(b.d));
   }

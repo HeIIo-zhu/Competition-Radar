@@ -151,7 +151,7 @@ const ALLOW = [
   'yuanxi.cugb.edu.cn',
   'zju.edu.cn',
   'zpy.cstam.org.cn',
-  'zufe.edu.cn',,
+  'zufe.edu.cn',
   'case.sppm.tsinghua.edu.cn',
   'ccsmic.scimeeting.cn',
   'cpipc.acge.org.cn',
@@ -211,6 +211,50 @@ async function fetchText(target, ms = 20000) {
     if (/环境异常|安全验证|滑动验证|captcha/i.test(html.slice(0, 3000))) throw new Error('目标站点反爬拦截');
     return html;
   } finally { clearTimeout(t); }
+}
+
+/* Cloudflare Workers 单次请求最多 6 条并发连接，超出的会排队；
+   若一次性并发 12 个抓取，排在后面的连接还没建立超时计时就已走完，全变 abort。
+   这里改成小并发池：只有真正拿到连接才开始计时。 */
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const n = Math.min(limit, items.length);
+  const workers = [];
+  for (let k = 0; k < n; k++) {
+    workers.push((async () => {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await fn(items[i], i);
+      }
+    })());
+  }
+  await Promise.all(workers);
+  return out;
+}
+
+/* 只对「超时 / 5xx / 429」再试一次；403、404、405 这类确定性失败重试也没用，直接返回。 */
+async function fetchTextRetry(target, ms = 11000, deadline = 0) {
+  try {
+    return await fetchText(target, ms);
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    const left = deadline ? deadline - Date.now() : 30000;
+    if (!/aborted|HTTP 5\d\d|HTTP 429/i.test(msg) || left < 9000) throw e;
+    await new Promise(r => setTimeout(r, 500));
+    return await fetchText(target, Math.min(ms, left - 1200));
+  }
+}
+
+/* 把底层报错翻译成人话，避免界面上只显示 HTTP 530 这种看不懂的东西 */
+function friendlyErr(e) {
+  const msg = String((e && e.message) || e);
+  if (/aborted/i.test(msg)) return '官网响应超时，很久没返回（对方服务器慢，或屏蔽了境外的抓取请求）';
+  if (/HTTP 5\d\d/.test(msg)) return '官网服务器故障（' + msg + '），暂时抓不到';
+  if (/HTTP 40[35]/.test(msg)) return '官网拒绝程序访问（' + msg + '），请点官网链接人工查看';
+  if (/HTTP 404/.test(msg)) return '官网链接已失效（404），需要更新网址';
+  if (/反爬/.test(msg)) return '官网有反爬验证，抓不到内容';
+  return msg.slice(0, 80);
 }
 
 function clean(s) {
@@ -407,19 +451,21 @@ export default {
       if (p === '/api/schedules' && request.method === 'POST') {
         const body = await request.json();
         const targets = Array.isArray(body.targets) ? body.targets.slice(0, 15) : [];
-        const results = await Promise.all(targets.map(async t => {
+        // 并发 5：留一条余量给「跟进子页」的请求，避免自己把自己挤到超时
+        const batchDeadline = Date.now() + 40000;   // 单批最多用 40 秒，别把前端 60 秒预算耗光
+        const results = await mapLimit(targets, 5, async t => {
           const base = { id: t.id, name: t.name, url: t.url };
           if (!allowed(t.url)) return { ...base, ok: false, status: '网址不在白名单' };
           const t0 = Date.now();
           try {
-            const html = await fetchText(t.url, 12000);
+            const html = await fetchTextRetry(t.url, 11000, batchDeadline);
             let info = extractSchedule(html);
             let followed = null;
             if (info.status === '未见报名信息' || info.status === '官网为动态页面') {
               const sub = pickSubPage(html, t.url);
               if (sub) {
                 try {
-                  const html2 = await fetchText(sub, 9000);
+                  const html2 = await fetchTextRetry(sub, 7000, batchDeadline + 7000);
                   const info2 = extractSchedule(html2);
                   if (info2.evidence.length > info.evidence.length || info2.status === '报名中' || info2.status === '报名已截止') {
                     info = info2; followed = sub;
@@ -429,9 +475,9 @@ export default {
             }
             return { ...base, ok: true, ...info, followed, ms: Date.now() - t0, fetchedAt: new Date().toISOString() };
           } catch (e) {
-            return { ...base, ok: false, status: '抓取失败', error: String(e.message || e).slice(0, 80), ms: Date.now() - t0 };
+            return { ...base, ok: false, status: '抓取失败', error: friendlyErr(e), ms: Date.now() - t0 };
           }
-        }));
+        });
         return json({ ok: true, results });
       }
       if (p === '/api/scan' || p === '/api/scan-one') {
