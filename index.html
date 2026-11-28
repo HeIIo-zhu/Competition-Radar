@@ -243,6 +243,25 @@ footer b{color:var(--text2)}
   .search{flex:1 1 100%}.filters{top:112px}.grid{grid-template-columns:1fr}
   .kv{grid-template-columns:70px 1fr}
 }
+.myzone{display:none;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+.myzone.on{display:block}
+.mzhead{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.mzhead h2{font-size:16px;margin:0 0 4px;font-weight:500}
+.mzhead p{margin:0;font-size:12.5px;color:var(--text2);line-height:1.6}
+.mzup{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;background:var(--panel2);transition:.15s;cursor:pointer}
+.mzup.over{border-color:var(--brand);background:var(--panel)}
+.mzico{width:34px;height:34px;margin:0 auto 8px;border-radius:50%;border:1px solid var(--brand);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:18px}
+.linkbtn{border:0;background:none;color:var(--brand);cursor:pointer;font-size:inherit;padding:0;font-family:inherit}
+.mzhint{font-size:11.5px;color:var(--text3);margin-top:6px}
+.mzpaste{width:100%;min-height:70px;margin-top:12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);padding:10px 12px;font-size:12.5px;font-family:inherit;resize:vertical}
+.mzact{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.mzmsg{font-size:12px;color:var(--text2)}
+.mzpreview{margin-top:12px;font-size:12px;color:var(--text2);line-height:1.7}
+.mzpreview b{color:var(--ok)}
+.mzpreview .miss{color:var(--warn)}
+.mrow{display:flex;gap:10px;align-items:center;padding:4px 0;flex-wrap:wrap}
+.mrow span{min-width:190px;flex:1 1 190px}
+.minput{min-width:220px;flex:1 1 220px;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);padding:0 8px;font-size:12px;font-family:inherit}
 </style>
 </head>
 <body>
@@ -261,6 +280,7 @@ footer b{color:var(--text2)}
       <input id="q" placeholder="搜索竞赛名称 / 负责部门 / 关键词…" autocomplete="off">
     </div>
     <button class="btn" id="refreshBtn"><span class="livedot" id="liveDot"></span>刷新最新</button>
+    <button class="btn" id="myBtn" title="导入自己的竞赛目录，数据只存本机">我的竞赛</button>
     <button class="btn" id="starFilter">★ 我的清单 <span id="starCount">0</span></button>
     <button class="btn" id="themeBtn" title="切换主题">🌗 主题</button>
     <button class="btn primary" id="exportBtn">导出</button>
@@ -268,6 +288,28 @@ footer b{color:var(--text2)}
 </header>
 
 <div class="wrap">
+  <div class="myzone" id="myZone">
+    <div class="mzhead">
+      <div>
+        <h2>我的竞赛 · 导入自己的目录</h2>
+        <p>上传竞赛目录 PDF / TXT，或粘贴名单，自动识别赛事并匹配官网。<b>识别结果只保存在你这台设备的浏览器里</b>，别人打开仍是空的；默认南信大目录不受影响。</p>
+      </div>
+      <button class="btn sm" id="myClear">清空</button>
+    </div>
+    <div class="mzup" id="mzDrop">
+      <input type="file" id="myFile" accept=".pdf,.txt,.text,application/pdf,text/plain" hidden>
+      <div class="mzico">＋</div>
+      <div>把 PDF / TXT 文件拖到这里，或 <button class="linkbtn" id="myPick">选择文件</button></div>
+      <div class="mzhint">PDF 为文字版时识别最准；扫描件请改用 TXT 或粘贴文本</div>
+    </div>
+    <textarea id="myPaste" class="mzpaste" placeholder="也可以直接粘贴名单：每行一个竞赛名称，或学校目录里的整段文字…"></textarea>
+    <div class="mzact">
+      <button class="btn primary" id="myParse">识别名单</button>
+      <button class="btn" id="myFetch">抓取我的竞赛官网</button>
+      <span class="mzmsg" id="myMsg"></span>
+    </div>
+    <div class="mzpreview" id="myPreview"></div>
+  </div>
   <div class="stats" id="stats"></div>
   <div class="livebar">
     <span class="livedot" id="lDot"></span>
@@ -359,8 +401,10 @@ footer b{color:var(--text2)}
 <script src="data/details.js"></script>
 <script src="data/major.js"></script>
 <script src="data/past.js"></script>
+<script src="data/registry.js"></script>
 <script src="data/config.js"></script>
 <script src="data/targets.js"></script>
+<script src="js/importer.js"></script>
 <script>
 (function(){
   "use strict";
@@ -389,10 +433,13 @@ footer b{color:var(--text2)}
   const stars = new Set(saved.stars||[]);
   const checks = saved.checks||{};
 
-  const state = { q:'', cats:new Set(), status:'', dept:'', sort:'cat', view:'card', onlyStar:false, dir:'rec' };
+  const state = { q:'', cats:new Set(), status:'', dept:'', sort:'cat', view:'card', onlyStar:false, dir:'rec', mine:false };
 
   /* 官方目录 Ⅰ/Ⅱ类 111 项 + 单列的目录外补充（蓝桥杯，2026目录列为Ⅲ类） */
-  const ALL = CATALOG.concat((EXTRA||[]).map(e=>Object.assign({},e,{dir:e.dir||'soft'})));
+  const BASE_ALL = CATALOG.concat((EXTRA||[]).map(e=>Object.assign({},e,{dir:e.dir||'soft'})));
+  let MY_LIST = [];
+  try{ const _my = window.Importer && Importer.load(); if(_my && _my.items) MY_LIST=_my.items; }catch(e){}
+  let ALL = BASE_ALL;
   const dirOf = it => (it.dir || MAJOR_MAP[it.id] || 'other');
   const CORE = ['comm','soft','auto'];
   function matchDir(it){
@@ -500,6 +547,7 @@ footer b{color:var(--text2)}
   function fillDepts(){
     const set = new Set(); ALL.forEach(i=>{ if(i.dept) i.dept.split(/[,，]/).forEach(d=>{const t=d.trim(); if(t)set.add(t);}); });
     const sel = $('#deptSel');
+    sel.innerHTML='<option value="">全部负责部门</option>';
     Array.from(set).sort().forEach(d=>{ const o=el('option',null,esc(d)); o.value=d; sel.appendChild(o); });
   }
 
@@ -866,6 +914,108 @@ footer b{color:var(--text2)}
   $('#refreshBtn').onclick = doRefresh;
   $('#openPanelBtn').onclick = openPanel;
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeDrawer(); closePanel(); } });
+
+  /* ── 我的竞赛：本机导入、三级匹配、共用抓取接口 ───────────────── */
+  function setMyMsg(t){ const n=$('#myMsg'); if(n) n.textContent=t||''; }
+  function renderMyPreview(){
+    const box=$('#myPreview'); if(!box) return;
+    if(!MY_LIST.length){ box.innerHTML=''; return; }
+    const okList=MY_LIST.filter(x=>x.url), miss=MY_LIST.length-okList.length;
+    let h='<div>已识别 <b>'+MY_LIST.length+'</b> 项赛事 · 已匹配官网 <b>'+okList.length+'</b> 项'
+        + (miss?' · <span class="miss">待补 '+miss+' 项</span>':'')+'</div>';
+    MY_LIST.forEach((x,i)=>{
+      if(!x.url) h+='<div class="mrow"><span>'+esc(x.name)+'</span><input class="minput" data-i="'+i+'" placeholder="手动填写官网地址（选填）"></div>';
+      else if(x.match==='fuzzy') h+='<div class="mrow"><span>'+esc(x.name)+'（模糊匹配 '+esc(x.urlSrc)+'）</span></div>';
+    });
+    box.innerHTML=h;
+    Array.from(box.querySelectorAll('.minput')).forEach(inp=>{
+      inp.onchange=()=>{
+        const i=+inp.getAttribute('data-i'); if(!MY_LIST[i]) return;
+        MY_LIST[i].url=inp.value.trim(); MY_LIST[i].urlSrc='手动填写';
+        Importer.save(MY_LIST); renderMyPreview(); render(); toast('官网已保存到本机');
+      };
+    });
+  }
+  function setMine(on){
+    state.mine=on;
+    ALL = on ? MY_LIST : BASE_ALL;
+    $('#myZone').classList.toggle('on',on);
+    $('#myBtn').classList.toggle('primary',on);
+    state.q=''; state.cats.clear(); state.status=''; state.dept=''; state.sort='cat'; state.onlyStar=false; state.dir='rec';
+    $('#q').value=''; $('#statusSel').value=''; $('#deptSel').value=''; $('#sortSel').value='cat';
+    renderChips(); renderDirChips(); fillDepts(); render(); renderMyPreview();
+    if(on && !MY_LIST.length) setMyMsg('还没有数据，上传文件或粘贴名单开始');
+  }
+  function applyMyText(text){
+    const rows=Importer.parseText(text);
+    if(rows.length<2){ toast('没识别出赛事名单，请检查内容或改用粘贴文本'); return; }
+    const items=Importer.match(rows, BASE_ALL, window.REGISTRY||{});
+    Importer.save(items); MY_LIST=items;
+    if(!state.mine) setMine(true);
+    else { ALL=MY_LIST; renderChips(); renderDirChips(); fillDepts(); render(); }
+    renderMyPreview();
+    const n=items.filter(x=>x.url).length;
+    setMyMsg('识别完成：'+rows.length+' 项，匹配官网 '+n+' 项，正在自动发现其余官网…');
+    toast('已识别 '+rows.length+' 项赛事');
+    discoverMissing();
+  }
+  /* 用 Worker 的 Bing 发现接口补全未匹配官网的赛事（零成本，不需绑卡） */
+  async function discoverMissing(){
+    const missing=MY_LIST.filter(x=>!x.url);
+    if(!missing.length || !HAS_API) return;
+    let done=0;
+    for(let i=0;i<missing.length;i+=8){
+      const batch=missing.slice(i,i+8);
+      setMyMsg('自动发现官网 '+Math.min(i+8,missing.length)+' / '+missing.length+' …');
+      try{
+        const j=await apiPost('/api/findurl',{names:batch.map(x=>x.name)},60000);
+        (j.results||[]).forEach(r=>{
+          const it=MY_LIST.find(x=>x.name===r.name);
+          if(it && r.url){ it.url=r.url; it.urlSrc='自动发现'; it.match='found'; done++; }
+        });
+        Importer.save(MY_LIST); renderMyPreview(); render();
+      }catch(e){}
+    }
+    setMyMsg('识别完成 · 自动发现官网 '+done+' 项 · 共 '+MY_LIST.filter(x=>x.url).length+'/'+MY_LIST.length+' 项有官网');
+  }
+  async function handleMyFile(f){
+    setMyMsg('正在读取 '+f.name+' …');
+    try{ const text=await Importer.readFile(f); applyMyText(text); }
+    catch(e){ setMyMsg('读取失败：'+e.message); toast(e.message); }
+  }
+  $('#myBtn').onclick=()=>setMine(!state.mine);
+  $('#myPick').onclick=()=>$('#myFile').click();
+  $('#mzDrop').onclick=e=>{ if(e.target.id==='mzDrop'||e.target.className==='mzico') $('#myFile').click(); };
+  $('#myFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(f) handleMyFile(f); e.target.value=''; };
+  ['dragenter','dragover'].forEach(t=>$('#mzDrop').addEventListener(t,e=>{e.preventDefault(); $('#mzDrop').classList.add('over');}));
+  ['dragleave','drop'].forEach(t=>$('#mzDrop').addEventListener(t,e=>{e.preventDefault(); $('#mzDrop').classList.remove('over');}));
+  $('#mzDrop').addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f) handleMyFile(f); });
+  $('#myParse').onclick=()=>{ const t=$('#myPaste').value.trim(); if(!t){toast('请先上传文件或粘贴名单');return;} applyMyText(t); };
+  $('#myClear').onclick=()=>{
+    if(!MY_LIST.length){ toast('我的竞赛本来就是空的'); return; }
+    if(!confirm('确定清空「我的竞赛」？默认南信大目录不受影响。')) return;
+    Importer.clear(); MY_LIST=[]; $('#myPaste').value='';
+    ALL=BASE_ALL; renderChips(); renderDirChips(); fillDepts(); render(); renderMyPreview(); setMyMsg('已清空'); toast('已清空我的竞赛');
+  };
+  $('#myFetch').onclick=async()=>{
+    const targets=MY_LIST.filter(x=>x.url).map(x=>({id:x.id,name:x.name,url:x.url}));
+    if(!targets.length){ toast('还没有官网可抓，请先识别名单或手动填写网址'); return; }
+    if(!HAS_API){ toast('实时抓取需要公网接口，当前不可用'); return; }
+    if(refreshState.busy){ toast('正在刷新中，请稍后再试'); return; }
+    $('#myFetch').disabled=true;
+    let got=0;
+    for(let i=0;i<targets.length;i+=8){
+      const g=targets.slice(i,i+8);
+      setMyMsg('正在抓取 '+(got+g.length)+' / '+targets.length+' …');
+      try{
+        const j=await apiPost('/api/schedules',{targets:g},60000);
+        (j.results||[]).forEach(r=>{ schedules.map[r.id]=r; });
+        got+=(j.results||[]).length; saveSched(); render();
+      }catch(e){}
+    }
+    $('#myFetch').disabled=false;
+    setMyMsg('抓取完成：'+got+' 项赛事官网'); toast('抓取完成：'+got+' 项');
+  };
   function closeDrawer(){ $('#drawer').classList.remove('on'); if(!$('#panel').classList.contains('on')) $('#mask').classList.remove('on'); }
 
   $('#themeBtn').addEventListener('click', ()=>{
