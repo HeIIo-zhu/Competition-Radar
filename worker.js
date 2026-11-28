@@ -434,6 +434,36 @@ async function scanOne(target, depth, pages, all, budgetMs) {
   }
 }
 
+
+
+/* 发现赛事官网：抓 Bing 搜索结果页，取第一条非搜索引擎的官网链接。
+   免费、不需要 Web Search API、不需要绑卡；结果仅作为候选，前端标注「自动发现」供人工核对。 */
+const BAD_HOST = /(^|\.)(bing\.com|microsoft\.com|baidu\.com|so\.com|sogou\.com|360\.cn|zhihu\.com|baike\.baidu\.com|csdn\.net|jianshu\.com|weixin\.qq\.com|qq\.com|weibo\.com|douban\.com|bilibili\.com|xiaohongshu\.com|xueshu\.com|cnki\.net|doc88\.com|wenku\.baidu\.com|51cto\.com|blog\.csdn\.net)$/i;
+async function discoverUrl(name, ms = 12000) {
+  const q = encodeURIComponent(String(name || '').slice(0, 60) + ' 官网');
+  const url = 'https://www.bing.com/search?q=' + q + '&setlang=zh-CN&count=10';
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept-Language': 'zh-CN,zh;q=0.9' },
+      redirect: 'follow', signal: ctl.signal
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const html = await r.text();
+    const re = /<h2[^>]*>[\s\S]{0,800}?<a[^>]+href="(https?:\/\/[^"]+)"/g;
+    let m;
+    while ((m = re.exec(html))) {
+      let u; try { u = new URL(m[1].replace(/&amp;/g, '&')); } catch (e) { continue; }
+      if (BAD_HOST.test(u.hostname)) continue;
+      if (u.hostname === 'bing.com' || u.hostname.endsWith('.bing.com')) continue;
+      return u.origin + u.pathname + u.search;
+    }
+    return null;
+  } catch (e) { return null; }
+  finally { clearTimeout(t); }
+}
+
 export default {
   async fetch(request) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -448,6 +478,12 @@ export default {
         notices: CACHE ? CACHE.notices.slice(0, 40) : []
       });
       if (p === '/api/refresh') return json({ ok: true, ...await refreshAll() });
+      if (p === '/api/findurl' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const names = (Array.isArray(body.names) ? body.names : []).slice(0, 8).map(String);
+        const results = await mapLimit(names, 3, async name => ({ name, url: await discoverUrl(name) }));
+        return json({ ok: true, results });
+      }
       if (p === '/api/schedules' && request.method === 'POST') {
         const body = await request.json();
         const targets = Array.isArray(body.targets) ? body.targets.slice(0, 15) : [];
