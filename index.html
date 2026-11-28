@@ -63,6 +63,8 @@ header.top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--b
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin:18px 0 14px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow);cursor:pointer;transition:.16s;position:relative;overflow:hidden}
 .stat:hover{transform:translateY(-2px)}
+.stat.flat{cursor:default}
+.stat.flat:hover{transform:none}
 .stat.on{border-color:var(--brand);box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 25%,transparent),var(--shadow)}
 .stat .n{font-size:25px;font-weight:800;letter-spacing:-.5px;line-height:1.2}
 .stat .l{font-size:12px;color:var(--text3);margin-top:2px}
@@ -259,9 +261,28 @@ footer b{color:var(--text2)}
 .mzpreview{margin-top:12px;font-size:12px;color:var(--text2);line-height:1.7}
 .mzpreview b{color:var(--ok)}
 .mzpreview .miss{color:var(--warn)}
-.mrow{display:flex;gap:10px;align-items:center;padding:4px 0;flex-wrap:wrap}
+.mrow{display:flex;gap:10px;align-items:center;padding:4px 0;flex-wrap:wrap;border-top:1px dashed var(--line)}
+.mrow:first-of-type{border-top:0}
 .mrow span{min-width:190px;flex:1 1 190px}
+.mzpreview .mrow{gap:8px}
+.mzpreview .mrow span{flex:0 1 46%;min-width:0}
+.mzpreview .minput{flex:1 1 200px;max-width:460px}
 .minput{min-width:220px;flex:1 1 220px;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);padding:0 8px;font-size:12px;font-family:inherit}
+/* 我的竞赛：已导入后收起上传区，只留一行摘要，页面更整齐 */
+[hidden]{display:none!important}
+.mzheadbtns{display:flex;gap:8px;flex-shrink:0}
+.mzsum{display:none;margin:0;font-size:12.5px;color:var(--text2);line-height:1.7}
+.mzsum b{color:var(--ok)}
+.mzsum .miss{color:var(--warn)}
+.myzone.mini .mzbody,.myzone.mini .mzdesc{display:none}
+.myzone.mini #myParse{display:none}
+.myzone.mini .mzact{margin-top:0}
+.myzone.mini .mzsum{display:block}
+.myzone.mini .mzhead{margin-bottom:10px}
+.mzmore{margin-top:8px}
+.mzpreview .mzsumrow{padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:4px}
+#noteMine h5{margin:0 0 8px;font-size:13px}
+.mzhide{display:none!important}
 </style>
 </head>
 <body>
@@ -271,7 +292,7 @@ footer b{color:var(--text2)}
       <div class="logo">南信</div>
       <div>
         <h1>竞赛雷达 · NUIST Competition Radar</h1>
-        <p>南京信息工程大学 2026 年学生创新创业竞赛目录（聚焦 Ⅰ / Ⅱ类 111 项）· 按「通信工程」方向筛选 · 更新 2026-10-29</p>
+        <p id="subLine">南京信息工程大学 2026 年学生创新创业竞赛目录（聚焦 Ⅰ / Ⅱ类 111 项）· 按「通信工程」方向筛选 · 更新 2026-10-29</p>
       </div>
     </div>
     <div class="spacer"></div>
@@ -290,19 +311,25 @@ footer b{color:var(--text2)}
 <div class="wrap">
   <div class="myzone" id="myZone">
     <div class="mzhead">
-      <div>
+      <div style="flex:1 1 auto;min-width:0">
         <h2>我的竞赛 · 导入自己的目录</h2>
-        <p>上传竞赛目录 PDF / TXT，或粘贴名单，自动识别赛事并匹配官网。<b>识别结果只保存在你这台设备的浏览器里</b>，别人打开仍是空的；默认南信大目录不受影响。</p>
+        <p class="mzdesc">上传竞赛目录 PDF / TXT，或粘贴名单，自动识别赛事并匹配官网。<b>识别结果只保存在你这台设备的浏览器里</b>，别人打开仍是空的；默认南信大目录不受影响。</p>
+        <p class="mzsum" id="mySum"></p>
       </div>
-      <button class="btn sm" id="myClear">清空</button>
+      <div class="mzheadbtns">
+        <button class="btn sm" id="myReup" hidden>重新上传</button>
+        <button class="btn sm" id="myClear">清空</button>
+      </div>
     </div>
-    <div class="mzup" id="mzDrop">
-      <input type="file" id="myFile" accept=".pdf,.txt,.text,application/pdf,text/plain" hidden>
-      <div class="mzico">＋</div>
-      <div>把 PDF / TXT 文件拖到这里，或 <button class="linkbtn" id="myPick">选择文件</button></div>
-      <div class="mzhint">PDF 为文字版时识别最准；扫描件请改用 TXT 或粘贴文本</div>
+    <div class="mzbody" id="mzBody">
+      <div class="mzup" id="mzDrop">
+        <input type="file" id="myFile" accept=".pdf,.txt,.text,application/pdf,text/plain" hidden>
+        <div class="mzico">＋</div>
+        <div>把 PDF / TXT 文件拖到这里，或 <button class="linkbtn" id="myPick">选择文件</button></div>
+        <div class="mzhint">PDF 为文字版时识别最准；扫描件请改用 TXT 或粘贴文本</div>
+      </div>
+      <textarea id="myPaste" class="mzpaste" placeholder="也可以直接粘贴名单：每行一个竞赛名称，或学校目录里的整段文字…"></textarea>
     </div>
-    <textarea id="myPaste" class="mzpaste" placeholder="也可以直接粘贴名单：每行一个竞赛名称，或学校目录里的整段文字…"></textarea>
     <div class="mzact">
       <button class="btn primary" id="myParse">识别名单</button>
       <button class="btn" id="myFetch">抓取我的竞赛官网</button>
@@ -311,7 +338,7 @@ footer b{color:var(--text2)}
     <div class="mzpreview" id="myPreview"></div>
   </div>
   <div class="stats" id="stats"></div>
-  <div class="livebar">
+  <div class="livebar" id="liveBar">
     <span class="livedot" id="lDot"></span>
     <span id="lText">正在检测本地服务…</span>
     <span class="lsep"></span>
@@ -349,12 +376,15 @@ footer b{color:var(--text2)}
 
   <div id="view"></div>
 
-  <div class="note">
+  <div class="note" id="noteBox">
+    <div id="noteNuist">
     <h5>目录口径（依据《南京信息工程大学学生创新创业竞赛管理办法（试行）》校发〔2020〕143 号 与 2026 年度目录）</h5>
     <p><b>官方分类</b>：2026 年目录共 259 项 = Ⅰ类 3 项（创新大赛 / 挑战杯大挑 / 挑战杯创青春） + Ⅱ类A 47 项（纳入全国高校学科竞赛排行榜的国赛项目） + Ⅱ类B 61 项（其他国赛与研究生实践创新系列） + Ⅲ类 148 项（省级及社会力量级）。<b>本应用已移除Ⅲ类 148 项</b>，只保留 Ⅰ / Ⅱ类 111 项，另将官方目录中属Ⅲ类、但通信工程强烈建议参加的蓝桥杯单列 1 项。</p>
     <p><b>专业方向（本应用的个性化分组，非学校官方分类）</b>：电子信息与通信（芯片 / 嵌入式 / 通信 / 信息安全）12 项、计算机与软件 14 项、机器人与自动化 14 项、综合双创 6 项为推荐主力；数理与建模 5 项为通用硬功夫；其他理工科 22 项为备选；<b>艺术 / 经管 / 外语 / 法学 / 师范等 38 项已单独归入「暂不参加」</b>，默认不显示，可用方向筛选随时调出。</p>
     <p><b>参赛路径</b>：多数赛事为「校内选拔 / 赛项通知 → 省级赛区 → 全国总决赛」三级路径，<b>校内截止早于官网截止 1-2 周</b>，务必盯学院（负责部门）通知。</p>
     <p><b>学分口径</b>：第二课堂实践学分另按 A/B/C 类学科竞赛认定（国家级≈A 类、省级及以上≈B 类、市级与校级≈C 类），与本目录的 Ⅰ/Ⅱ/Ⅲ/Ⅳ类不是同一套编号，填报前以当年度文件为准。</p>
+    </div>
+    <div id="noteMine" hidden></div>
     <div class="legend">
       <span><i class="st-dot" style="background:var(--ok)"></i>已过节点</span>
       <span><i class="st-dot" style="background:var(--warn)"></i>当前窗口</span>
@@ -364,11 +394,14 @@ footer b{color:var(--text2)}
   </div>
 
   <footer>
+    <div id="footNuist">
     <b>数据来源</b>：南京信息工程大学 2026 年学生创新创业竞赛目录（教务处·创新创业学院（藕舫学院），2026-04-09 发布，附件1 Ⅰ、Ⅱ类 111 项；PDF 原文见「资料」目录）；
     赛事赛程时间来自各赛事组委会官网通知、教育部通知与主办方公告；校内节点来自南信大信息公告栏「创新创业」栏目（正文需校内 VPN）。<br>
     <b>说明</b>：节点标注「预计」的为按往年固定月份推算的参考值，正式参赛请以当届官方通知为准；「专业方向」是本应用按通信工程视角做的个人化归类，仅用于筛选，不改变学校官方认定；本应用为信息聚合工具，不代表学校官方发布。<br>
     <b>实时刷新</b>：浏览器受跨域限制不能直接抓官网，由公网 Cloudflare Worker（免费）代抓——每次打开页面自动刷新一次，点「刷新最新」再强制刷新一次；抓取南信大 5 个官方栏目与 111 项赛事官网的报名状态、开始/截止日期。未配置 Worker 地址时刷新按钮自动隐藏，页面仍可使用内置数据。
-    <div class="ver">版本 v2026.11.27 · 抓取目标 111 项</div>
+    <div class="ver">版本 v2026.11.28 · 抓取目标 111 项</div>
+    </div>
+    <div id="footMine" hidden></div>
   </footer>
 </div>
 
@@ -437,8 +470,8 @@ footer b{color:var(--text2)}
 
   /* 官方目录 Ⅰ/Ⅱ类 111 项 + 单列的目录外补充（蓝桥杯，2026目录列为Ⅲ类） */
   const BASE_ALL = CATALOG.concat((EXTRA||[]).map(e=>Object.assign({},e,{dir:e.dir||'soft'})));
-  let MY_LIST = [];
-  try{ const _my = window.Importer && Importer.load(); if(_my && _my.items) MY_LIST=_my.items; }catch(e){}
+  let MY_LIST = [], MY_META = {};
+  try{ const _my = window.Importer && Importer.load(); if(_my){ MY_LIST=_my.items||[]; MY_META=_my.meta||{}; } }catch(e){}
   let ALL = BASE_ALL;
   const dirOf = it => (it.dir || MAJOR_MAP[it.id] || 'other');
   const CORE = ['comm','soft','auto'];
@@ -479,8 +512,42 @@ footer b{color:var(--text2)}
   }
 
   // ---------- stats ----------
+  function myCounts(){
+    const t = MY_LIST.length;
+    const inherited = MY_LIST.filter(x=>x.url && x.urlSrc==='南信大目录').length;
+    const found = MY_LIST.filter(x=>x.url && x.urlSrc!=='南信大目录').length;
+    return { t:t, inherited:inherited, found:found, miss:Math.max(0,t-inherited-found) };
+  }
+  function renderMineStats(box){
+    const c = myCounts();
+    const total = ALL.length || 1;
+    const openCnt = ALL.filter(i=>statusOf(i)==='open').length;
+    const extCnt = ALL.filter(i=>i.cat==='EXT').length;
+    const items = [
+      {n:ALL.length, l:'我的竞赛 · 全部赛事', cls:'c1', bar:'i1', pct:100,
+       act:()=>{ state.cats.clear(); state.dir='all'; }, on:state.dir==='all'&&!state.cats.size},
+      {n:c.inherited, l:'同名继承 · 沿用它校目录', cls:'c2a', bar:'i2a', pct:c.inherited/total*100},
+      {n:c.found, l:'官网已找到 · 内置库 / 发现 / 手填', cls:'c2b', bar:'i2b', pct:c.found/total*100},
+      {n:c.miss, l:'待补官网 · 可在下方填写', cls:'', bar:'i3', pct:c.miss/total*100},
+      {n:openCnt, l:'当前可报名 / 待报名', cls:'', bar:'i2a', pct:openCnt/total*100,
+       act:()=>{ state.status='open'; $('#statusSel').value='open'; }, on:state.status==='open'},
+      {n:extCnt, l:'原目录未收录（类别「单列」）', cls:'', bar:'i2b', pct:extCnt/total*100,
+       act:()=>{ state.cats.clear(); state.cats.add('EXT'); }, on:state.cats.has('EXT')}
+    ];
+    items.forEach(it=>{
+      const n = el('div','stat'+(it.on?' on':'')+(it.act?'':' flat'));
+      n.innerHTML = '<div class="n'+(it.cls?' '+it.cls:'')+'">'+it.n+'</div><div class="l">'+it.l+'</div><div class="bar"><i class="'+it.bar+'" style="width:'+(it.pct||0).toFixed(1)+'%"></i></div>';
+      if(it.act) n.onclick = ()=>{ it.act(); renderChips(); renderDirChips(); render(); };
+      box.appendChild(n);
+    });
+  }
   function renderStats(){
     const box = $('#stats'); box.innerHTML='';
+    if(state.mine){
+      if(!MY_LIST.length){ box.classList.add('mzhide'); return; }
+      box.classList.remove('mzhide'); renderMineStats(box); return;
+    }
+    box.classList.remove('mzhide');
     const counts = {'Ⅰ类':0,'Ⅱ类A':0,'Ⅱ类B':0};
     ALL.forEach(i=>{ if(counts[i.cat]!=null) counts[i.cat]++; });
     const openCnt = ALL.filter(i=>statusOf(i)==='open').length;
@@ -527,7 +594,7 @@ footer b{color:var(--text2)}
     const box=$('#dirChips'); if(!box) return; box.innerHTML='';
     const counts={}; ALL.forEach(i=>{const d=dirOf(i); counts[d]=(counts[d]||0)+1;});
     const opts=[
-      {k:'rec', label:'推荐（通信工程对口）', cnt:ALL.filter(i=>RECOMMEND.indexOf(dirOf(i))>=0).length},
+      {k:'rec', label:(state.mine?'推荐（通用方向）':'推荐（通信工程对口）'), cnt:ALL.filter(i=>RECOMMEND.indexOf(dirOf(i))>=0).length},
       {k:'core',label:'电子通信 / 计算机 / 机器人', cnt:ALL.filter(i=>CORE.indexOf(dirOf(i))>=0).length},
       {k:'comm',label:'电子信息与通信', cnt:counts.comm||0},
       {k:'soft',label:'计算机与软件', cnt:counts.soft||0},
@@ -877,7 +944,12 @@ footer b{color:var(--text2)}
     const view = $('#view'); view.innerHTML='';
     if(state.view==='card'){
       const list = filtered();
-      if(!list.length){ view.appendChild(el('div','empty','<div class="big">◌</div>没有符合条件的竞赛，换个筛选条件试试')); }
+      if(!list.length){
+        const msg = (state.mine && !MY_LIST.length)
+          ? '还没有导入竞赛目录 · 在上方上传 PDF / TXT，或粘贴名单后点「识别名单」'
+          : '没有符合条件的竞赛，换个筛选条件试试';
+        view.appendChild(el('div','empty','<div class="big">◌</div>'+msg));
+      }
       else{
         const g = el('div','grid');
         list.forEach(it=>g.appendChild(card(it)));
@@ -917,43 +989,155 @@ footer b{color:var(--text2)}
 
   /* ── 我的竞赛：本机导入、三级匹配、共用抓取接口 ───────────────── */
   function setMyMsg(t){ const n=$('#myMsg'); if(n) n.textContent=t||''; }
+  const MY_EXPANDED = { all:false };      // 待补官网列表是否展开全部
+
+  function renderMySum(){
+    const box=$('#mySum'); if(!box) return;
+    if(!MY_LIST.length){ box.innerHTML=''; return; }
+    const c=myCounts();
+    let h='已导入'+(MY_META.src?('「'+esc(MY_META.src)+'」'):'')+' <b>'+c.t+'</b> 项 · 有官网 <b>'+(c.inherited+c.found)+'</b> 项';
+    if(c.miss) h+=' · <span class="miss">待补 '+c.miss+' 项</span>';
+    if(MY_META.ts) h+=' · '+fmtTime(MY_META.ts)+' 导入';
+    box.innerHTML=h;
+  }
+  function renderMyNote(){
+    const box=$('#noteMine'); if(!box) return;
+    if(!MY_LIST.length){ box.innerHTML=''; return; }
+    const c=myCounts();
+    const src=MY_META.src?('《'+esc(MY_META.src)+'》'):'你粘贴的名单';
+    const parts=[];
+    if(c.inherited) parts.push('<b>'+c.inherited+' 项</b>与南信大 2026 年目录同名，官网、类别、负责部门直接沿用该目录');
+    if(c.found) parts.push('另有 <b>'+c.found+' 项</b>的官网来自内置赛事库匹配、自动发现或你手动填写');
+    if(c.miss) parts.push('<span class="miss">'+c.miss+' 项</span>尚未找到官网，可在上方逐条补填，补填后同样参与抓取');
+    box.innerHTML=
+      '<h5>导入数据口径（「我的竞赛」模式）</h5>'
+      +'<p><b>名单来源</b>：'+src+'，共识别 '+c.t+' 项赛事。'+(parts.length?parts.join('；')+'。':'')+'</p>'
+      +'<p><b>类别口径</b>：Ⅰ类 / Ⅱ类A / Ⅱ类B 沿用南信大目录认定；标<b>「单列」</b>的是南信大目录未收录、由你导入的赛事，类别与学分认定请以你所在学校的文件为准，本应用不做推断。</p>'
+      +'<p><b>专业方向</b>：分组按赛事名称关键词自动归类，与南信大目录同名的赛事沿用原分组；未能归类的统一放进「综合双创」，可用上方方向筛选随时查看。</p>'
+      +'<p><b>数据存放</b>：名单只写进你这台设备的浏览器（localStorage），不上传任何服务器；换设备、换浏览器或清理浏览数据后需重新导入，点「清空」即彻底删除。</p>';
+  }
+  function renderFootMine(){
+    const box=$('#footMine'); if(!box) return;
+    if(!MY_LIST.length){
+      box.innerHTML='<b>数据来源</b>：尚未导入任何目录。在上方选择 PDF / TXT 文件，或粘贴名单后点「识别名单」；识别结果只保存在本机浏览器。<br>'
+        +'<b>说明</b>：本模式不改动默认的南信大 2026 年目录，再点一次顶部「我的竞赛」即回到原目录。'
+        +'<div class="ver">我的竞赛 · 暂无数据</div>';
+      return;
+    }
+    const c=myCounts();
+    const src=MY_META.src?('《'+esc(MY_META.src)+'》'):'粘贴的名单';
+    const fp=[];
+    if(c.inherited) fp.push(c.inherited+' 项与《南京信息工程大学 2026 年学生创新创业竞赛目录》同名，官网、类别、负责部门沿用该目录');
+    if(c.found) fp.push(c.found+' 项官网来自内置赛事库匹配、Bing 自动发现或你手动填写');
+    if(c.miss) fp.push(c.miss+' 项目前仍缺官网');
+    let h='<b>数据来源</b>：'+src+'（本机导入'+(MY_META.ts?(' · '+fmtTime(MY_META.ts)):'')+' · 识别 '+c.t+' 项）；'
+      +(fp.length?fp.join('；')+'。':'');
+    h += '<br><b>说明</b>：赛程节点取自各赛事官网通知，标注「预计」的为按往年固定月份推算的参考值，正式参赛以当届官方通知为准；'
+      +'这份名单只保存在本机浏览器，不上传服务器，也不影响默认的南信大目录；本应用为信息聚合工具，不代表任何学校官方发布。'
+      +'<br><b>实时刷新</b>：点「抓取我的竞赛官网」由公网 Cloudflare Worker 代理抓取，范围是本名单中已匹配到官网的 '+(c.inherited+c.found)+' 项，未匹配项不参与抓取。'
+      +'<div class="ver">我的竞赛 · '+c.t+' 项 · 有官网 '+(c.inherited+c.found)+' 项</div>';
+    box.innerHTML=h;
+  }
+  /* 模式切换后的界面同步：收放上传区、切换底部口径与数据来源 */
+  function syncModeUI(){
+    const mine=state.mine, has=MY_LIST.length>0;
+    document.body.classList.toggle('mine',mine);
+    const zone=$('#myZone');
+    if(zone) zone.classList.toggle('mini', mine && has);
+    const reup=$('#myReup'); if(reup) reup.hidden = !(mine && has);
+    const nn=$('#noteNuist'), nm=$('#noteMine'), fn=$('#footNuist'), fm=$('#footMine');
+    if(nn) nn.hidden=mine; if(nm) nm.hidden=!mine;
+    if(fn) fn.hidden=mine; if(fm) fm.hidden=!mine;
+    $('#stats').classList.toggle('mzhide', mine && !has);
+    const nb=$('#noteBox'); if(nb) nb.classList.toggle('mzhide', mine && !has);
+    const fl=document.querySelector('.filters');
+    if(fl) fl.classList.toggle('mzhide', mine && !has);
+    const ob=$('#openPanelBtn'); if(ob) ob.style.display = mine ? 'none' : '';
+    /* 顶部副标题跟着模式走（主标题不变） */
+    const sub=$('#subLine');
+    if(sub){
+      if(mine){
+        const c=myCounts();
+        sub.textContent = has
+          ? ('我的竞赛 · '+(MY_META.src?('「'+MY_META.src+'」'):'本机导入')+' · 识别 '+c.t+' 项 · 有官网 '+(c.inherited+c.found)+' 项 · 数据只存本机')
+          : '我的竞赛 · 尚未导入目录 · 上传 PDF / TXT 或粘贴名单开始';
+      }else{
+        sub.textContent = '南京信息工程大学 2026 年学生创新创业竞赛目录（聚焦 Ⅰ / Ⅱ类 111 项）· 按「通信工程」方向筛选 · 更新 2026-10-29';
+      }
+    }
+    /* 状态条文案跟着模式走（切回南信大时还原，避免抢掉实时通道提示） */
+    if(mine){
+      const c=myCounts();
+      $('#lText').textContent = has ? '我的竞赛 · 数据只存本机' : '我的竞赛 · 还没有导入数据';
+      $('#lMeta').textContent = has ? ('已识别 '+c.t+' 项 · 有官网 '+(c.inherited+c.found)+' 项') : '上传目录后自动匹配官网';
+    }else if(syncModeUI._wasMine){
+      if(IS_ONLINE && !HAS_API){
+        $('#lText').textContent='公网静态版 · 内置竞赛数据（实时刷新请本地运行）';
+        $('#lMeta').textContent='数据版本 2026-10-29 · 离线可用';
+      }else if(HAS_API){
+        setLive(live.on, live.on?'公网接口已连接 · 可实时刷新官网':'实时接口未连接 · 使用内置数据', live.last?('上次刷新 '+fmtTime(live.last)):'内置数据版本 2026-10-29');
+      }else{
+        $('#lText').textContent='本地服务未连接 · 使用内置数据';
+        $('#lMeta').textContent='内置数据版本 2026-10-29';
+      }
+    }
+    syncModeUI._wasMine = mine;
+    renderMySum(); renderMyNote(); renderFootMine();
+  }
   function renderMyPreview(){
     const box=$('#myPreview'); if(!box) return;
     if(!MY_LIST.length){ box.innerHTML=''; return; }
-    const okList=MY_LIST.filter(x=>x.url), miss=MY_LIST.length-okList.length;
-    let h='<div>已识别 <b>'+MY_LIST.length+'</b> 项赛事 · 已匹配官网 <b>'+okList.length+'</b> 项'
-        + (miss?' · <span class="miss">待补 '+miss+' 项</span>':'')+'</div>';
-    MY_LIST.forEach((x,i)=>{
-      if(!x.url) h+='<div class="mrow"><span>'+esc(x.name)+'</span><input class="minput" data-i="'+i+'" placeholder="手动填写官网地址（选填）"></div>';
-      else if(x.match==='fuzzy') h+='<div class="mrow"><span>'+esc(x.name)+'（模糊匹配 '+esc(x.urlSrc)+'）</span></div>';
-    });
+    const c=myCounts();
+    let h='<div class="mzsumrow">已识别 <b>'+c.t+'</b> 项 · 同名继承南信大目录 <b>'+c.inherited+'</b> 项 · 其他来源已找到官网 <b>'+c.found+'</b> 项'
+        + (c.miss?' · <span class="miss">待补 '+c.miss+' 项</span>':'')+'</div>';
+    const missIdx=[]; MY_LIST.forEach((x,i)=>{ if(!x.url) missIdx.push(i); });
+    const fuzzy=MY_LIST.filter(x=>x.url && x.match==='fuzzy');
+    if(missIdx.length){
+      const show = MY_EXPANDED.all ? missIdx : missIdx.slice(0,6);
+      h+='<div style="margin-top:2px">未找到官网的赛事可直接填地址（选填，填完即参与抓取）：</div>';
+      show.forEach(i=>{ const x=MY_LIST[i];
+        h+='<div class="mrow"><span>'+esc(x.name)+'</span><input class="minput" data-i="'+i+'" placeholder="官网地址，如 https://…"></div>';
+      });
+      if(missIdx.length>6){
+        h+='<div class="mzmore"><button class="linkbtn" id="mzMore">'+(MY_EXPANDED.all?('收起，只显示前 6 项'):('展开全部 '+missIdx.length+' 项待补官网'))+'</button></div>';
+      }
+    }
+    if(MY_EXPANDED.all && fuzzy.length){
+      h+='<div style="margin-top:8px">名称不完全一致、按模糊匹配继承的赛事（请自行核对）：</div>';
+      fuzzy.forEach(x=>{ h+='<div class="mrow"><span>'+esc(x.name)+'</span><span style="color:var(--text3);flex:1 1 160px">'+esc(x.urlSrc||'')+'</span></div>'; });
+    }
     box.innerHTML=h;
     Array.from(box.querySelectorAll('.minput')).forEach(inp=>{
       inp.onchange=()=>{
         const i=+inp.getAttribute('data-i'); if(!MY_LIST[i]) return;
-        MY_LIST[i].url=inp.value.trim(); MY_LIST[i].urlSrc='手动填写';
-        Importer.save(MY_LIST); renderMyPreview(); render(); toast('官网已保存到本机');
+        const v=inp.value.trim();
+        if(v && !/^https?:\/\//i.test(v)){ toast('请填写以 http(s):// 开头的完整网址'); return; }
+        MY_LIST[i].url=v; MY_LIST[i].urlSrc=v?'手动填写':''; MY_LIST[i].match=v?'manual':'';
+        Importer.save(MY_LIST); renderMyPreview(); render(); syncModeUI(); toast(v?'官网已保存到本机':'已清除该官网');
       };
     });
+    const mb=$('#mzMore');
+    if(mb) mb.onclick=()=>{ MY_EXPANDED.all=!MY_EXPANDED.all; renderMyPreview(); };
   }
   function setMine(on){
     state.mine=on;
     ALL = on ? MY_LIST : BASE_ALL;
     $('#myZone').classList.toggle('on',on);
     $('#myBtn').classList.toggle('primary',on);
-    state.q=''; state.cats.clear(); state.status=''; state.dept=''; state.sort='cat'; state.onlyStar=false; state.dir='rec';
+    state.q=''; state.cats.clear(); state.status=''; state.dept=''; state.sort='cat'; state.onlyStar=false;
+    state.dir = on ? 'all' : 'rec';
     $('#q').value=''; $('#statusSel').value=''; $('#deptSel').value=''; $('#sortSel').value='cat';
-    renderChips(); renderDirChips(); fillDepts(); render(); renderMyPreview();
+    renderChips(); renderDirChips(); fillDepts(); render(); renderMyPreview(); syncModeUI();
     if(on && !MY_LIST.length) setMyMsg('还没有数据，上传文件或粘贴名单开始');
   }
-  function applyMyText(text){
+  function applyMyText(text, srcName){
     const rows=Importer.parseText(text);
     if(rows.length<2){ toast('没识别出赛事名单，请检查内容或改用粘贴文本'); return; }
-    const items=Importer.match(rows, BASE_ALL, window.REGISTRY||{});
-    Importer.save(items); MY_LIST=items;
+    const items=Importer.match(rows, BASE_ALL, window.REGISTRY||{}, { dirOf: it=>dirOf(it) });
+    MY_META = { src: srcName||'粘贴文本', raw: rows.length, ts: Date.now() };
+    Importer.save(items, MY_META); MY_LIST=items; MY_EXPANDED.all=false;
     if(!state.mine) setMine(true);
-    else { ALL=MY_LIST; renderChips(); renderDirChips(); fillDepts(); render(); }
-    renderMyPreview();
+    else { ALL=MY_LIST; renderChips(); renderDirChips(); fillDepts(); render(); renderMyPreview(); syncModeUI(); }
     const n=items.filter(x=>x.url).length;
     setMyMsg('识别完成：'+rows.length+' 项，匹配官网 '+n+' 项，正在自动发现其余官网…');
     toast('已识别 '+rows.length+' 项赛事');
@@ -973,14 +1157,14 @@ footer b{color:var(--text2)}
           const it=MY_LIST.find(x=>x.name===r.name);
           if(it && r.url){ it.url=r.url; it.urlSrc='自动发现'; it.match='found'; done++; }
         });
-        Importer.save(MY_LIST); renderMyPreview(); render();
+        Importer.save(MY_LIST); renderMyPreview(); render(); syncModeUI();
       }catch(e){}
     }
     setMyMsg('识别完成 · 自动发现官网 '+done+' 项 · 共 '+MY_LIST.filter(x=>x.url).length+'/'+MY_LIST.length+' 项有官网');
   }
   async function handleMyFile(f){
     setMyMsg('正在读取 '+f.name+' …');
-    try{ const text=await Importer.readFile(f); applyMyText(text); }
+    try{ const text=await Importer.readFile(f); applyMyText(text, f.name); }
     catch(e){ setMyMsg('读取失败：'+e.message); toast(e.message); }
   }
   $('#myBtn').onclick=()=>setMine(!state.mine);
@@ -990,12 +1174,14 @@ footer b{color:var(--text2)}
   ['dragenter','dragover'].forEach(t=>$('#mzDrop').addEventListener(t,e=>{e.preventDefault(); $('#mzDrop').classList.add('over');}));
   ['dragleave','drop'].forEach(t=>$('#mzDrop').addEventListener(t,e=>{e.preventDefault(); $('#mzDrop').classList.remove('over');}));
   $('#mzDrop').addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f) handleMyFile(f); });
-  $('#myParse').onclick=()=>{ const t=$('#myPaste').value.trim(); if(!t){toast('请先上传文件或粘贴名单');return;} applyMyText(t); };
+  $('#myParse').onclick=()=>{ const t=$('#myPaste').value.trim(); if(!t){toast('请先上传文件或粘贴名单');return;} applyMyText(t,'粘贴文本'); };
+  $('#myReup').onclick=()=>{ $('#myZone').classList.remove('mini'); setMyMsg(''); $('#myPaste').focus(); };
   $('#myClear').onclick=()=>{
     if(!MY_LIST.length){ toast('我的竞赛本来就是空的'); return; }
     if(!confirm('确定清空「我的竞赛」？默认南信大目录不受影响。')) return;
-    Importer.clear(); MY_LIST=[]; $('#myPaste').value='';
-    ALL=BASE_ALL; renderChips(); renderDirChips(); fillDepts(); render(); renderMyPreview(); setMyMsg('已清空'); toast('已清空我的竞赛');
+    Importer.clear(); MY_LIST=[]; MY_META={}; MY_EXPANDED.all=false; $('#myPaste').value='';
+    setMine(true); renderMyPreview(); setMyMsg('已清空，可以重新上传或粘贴名单');
+    toast('已清空我的竞赛');
   };
   $('#myFetch').onclick=async()=>{
     const targets=MY_LIST.filter(x=>x.url).map(x=>({id:x.id,name:x.name,url:x.url}));
@@ -1310,6 +1496,7 @@ footer b{color:var(--text2)}
     $('#lMeta').textContent='数据版本 2026-10-29 · 离线可用';
   }
   renderChips(); renderDirChips(); fillDepts(); render();
+  syncModeUI();   // 初始化底部口径 / 页脚 / 上传区收起状态
   // 读取上次抓取缓存 + 检测本地服务
   try{
     const cache = JSON.parse(localStorage.getItem('nuist_radar_live')||'null');

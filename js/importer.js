@@ -59,8 +59,10 @@
     return out;
   }
 
-  /* 三级匹配：精确 → 模糊 → 内置官网库；前两级继承南信大目录已有的官网 */
-  function match(rows, builtin, registry){
+  /* 三级匹配：精确 → 模糊 → 内置官网库；前两级继承南信大目录已有的官网
+     opts.dirOf(baseItem) 可让调用方补充「专业方向」分组（原目录 dir 字段或映射表） */
+  function match(rows, builtin, registry, opts){
+    const dirOf = (opts && opts.dirOf) || null;
     const index={};
     builtin.forEach(it=>{ index[norm(it.name)]=it; });
     const items = rows.map((r,idx)=>{
@@ -87,7 +89,7 @@
         cat: base ? base.cat : 'EXT',
         dept: base ? base.dept : (r.dept||'待补充'),
         url:url, urlSrc:src, match:how,
-        dir: base && base.dir ? base.dir : 'gen',
+        dir: base ? ((dirOf && dirOf(base)) || base.dir || 'gen') : 'gen',
         note: url ? '' : '未找到官网，可手动填写'
       };
     });
@@ -98,8 +100,15 @@
     try{ const c=JSON.parse(localStorage.getItem(MY_KEY)||'null'); return c&&Array.isArray(c.items)?c:null; }
     catch(e){ return null; }
   }
-  function save(items){
-    try{ localStorage.setItem(MY_KEY, JSON.stringify({items:items, ts:Date.now()})); return true; }
+  /* meta = {src:文件名或「粘贴文本」, raw:原始识别行数, ts:导入时间}；不带 meta 时沿用上一次 */
+  function save(items, meta){
+    try{
+      let old={};
+      try{ old = JSON.parse(localStorage.getItem(MY_KEY)||'null')||{}; }catch(e){}
+      const m = Object.assign({}, old.meta||{}, meta||{});
+      localStorage.setItem(MY_KEY, JSON.stringify({items:items, ts:Date.now(), meta:m}));
+      return true;
+    }
     catch(e){ return false; }
   }
   function clear(){ try{ localStorage.removeItem(MY_KEY); }catch(e){} }
